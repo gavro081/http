@@ -1,9 +1,6 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.Socket;
-import java.util.HashMap;
+import java.util.*;
 
 public class Worker implements Runnable{
     private final Socket socket;
@@ -22,6 +19,34 @@ public class Worker implements Runnable{
         }
     }
 
+    static private StringBuilder fileToStringBuilder(File file) throws FileNotFoundException {
+        Scanner sc = new Scanner(file);
+        StringBuilder sb = new StringBuilder();
+        while (sc.hasNextLine()){
+            sb.append(sc.nextLine()).append('\n');
+        }
+        return sb;
+    }
+
+    static private void embedCss(StringBuilder html){
+        String []lines = html.toString().split("\n");
+        Arrays.stream(lines)
+                .filter(line -> line.strip().startsWith("<link") && line.contains("rel=\"stylesheet\""))
+                .forEach(line -> {
+                    String link = line.strip().split("href=\"")[1].split("\"")[0];
+                    File file = new File("static/" + link);
+                    try {
+                        StringBuilder cssContents = fileToStringBuilder(file);
+                        cssContents.insert(0, "<style>\n");
+                        cssContents.append("</style>");
+                        int offset = html.indexOf(line);
+                        html.replace(offset, offset + line.length(), cssContents.toString());
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
+
     @Override
     public void run(){
         String line = "";
@@ -38,13 +63,16 @@ public class Worker implements Runnable{
                 parts = line.split(":(\\s++)?", 2);
                 headers.put(parts[0], parts[1]);
             }
-            String message = "<p>hello from my http server!</p>";
+            File file = new File("static/index.html");
+            StringBuilder html = fileToStringBuilder(file);
+            embedCss(html);
+
             writer.write("HTTP/1.1 200 OK\r\n");
             writer.write("Content-Type: text/html\r\n");
             writer.write("Connection: close\r\n");
-            writer.write("Content-Length: " + message.getBytes().length + "\r\n");
+            writer.write("Content-Length: " + html.length() + "\r\n");
             writer.write("\r\n");
-            writer.write(message);
+            writer.write(html.toString());
             writer.flush();
         } catch (Exception e){
             System.out.println(line);

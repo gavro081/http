@@ -1,0 +1,7 @@
+browser sends separate GET requests for all stylesheets, scripts, images etc.
+all of those need to be handled.
+
+1. add support for css, js, images etc.
+2. add support for POST/PUT/PATCH methods (?)
+3. add support for HEAD
+4. add compression
