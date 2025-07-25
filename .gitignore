@@ -23,8 +23,8 @@
 hs_err_pid*
 replay_pid*
 
-.idea\
-out\
+.idea/
+out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
