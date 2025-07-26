@@ -18,10 +18,8 @@ enum METHODS {
 
 public class RequestHandler {
     private final String method;
-//    private final String requestTarget;
     private final File requestedResource;
-    private final String httpVersion;
-    private HashMap<String, String> requestHeaders = new HashMap<>();
+    private HashMap<String, String> requestHeaders;
     private final OutputStream outputStream;
     private final BufferedWriter writer;
 
@@ -31,21 +29,29 @@ public class RequestHandler {
         if (parts.length != 3) throw new RuntimeException("Invalid params.");
 
         this.method = parts[0];
-        String requestTarget = parts[1];
-        this.httpVersion = parts[2];
 
+        String httpVersion = parts[2];
         if (!httpVersion.startsWith("HTTP/")) throw new RuntimeException("Invalid HTTP version.");
 
-        File target = new File(requestTarget.equals("/") ? "static/index.html" : "static/" + requestTarget);
-        if (!target.exists()) throw new RuntimeException("Target resource doesn't exist.");
-
-        this.requestedResource = target;
+        this.requestedResource = getFile(parts[1]);
         this.requestHeaders = headers;
 
         // stream is for bytes, writer is for text
         this.outputStream = outputStream;
         this.writer = new BufferedWriter(new OutputStreamWriter(outputStream));
     }
+
+    private static File getFile(String requestTarget) {
+        Path base = Path.of("static").toAbsolutePath().normalize();
+        String relativePath = requestTarget.equals("/") ? "index.html" : requestTarget.substring(1);
+        Path resolved = base.resolve(relativePath).normalize();
+        if (!resolved.startsWith(base)) throw new RuntimeException("Forbidden: Path escape attempt");
+
+        File target = resolved.toFile();
+        if (!target.exists()) throw new RuntimeException("Target resource doesn't exist. Path: " + target);
+        return target;
+    }
+
 
     private String getContentType(File file){
         String []parts = file.getName().split("\\.");
@@ -75,17 +81,15 @@ public class RequestHandler {
             // if we make it here the requested resource must exist
             String contentType = getContentType(requestedResource);
             if (contentType.isBlank()) throw new RuntimeException();
-            int length;
-            byte[] fileContentsBytes = null;
-            StringBuilder fileContentsSb = null;
+            byte[] fileContentsBytes;
             if (contentType.startsWith("image")) {
                 fileContentsBytes = fileToByteArray(requestedResource);
-                length = fileContentsBytes.length;
             } else {
-                fileContentsSb = fileToStringBuilder(this.requestedResource);
-                length = fileContentsSb.length();
+                fileContentsBytes = fileToStringBuilder(this.requestedResource)
+                        .toString()
+                        .getBytes(StandardCharsets.UTF_8);
             }
-            LinkedHashMap<String, String> responseHeaders = this.writeHeaders(length, contentType);
+            LinkedHashMap<String, String> responseHeaders = this.writeHeaders(fileContentsBytes.length, contentType);
             writer.write("HTTP/1.1 200 OK\r\n");
             responseHeaders.forEach((key, val) -> {
                 try {
@@ -95,24 +99,20 @@ public class RequestHandler {
                 }
             });
             writer.write("\r\n");
-            if (fileContentsBytes != null){
-                writer.flush();
-                outputStream.write(fileContentsBytes);
-                outputStream.flush();
-            } else {
-                writer.write(fileContentsSb.toString());
-                writer.flush();
-            }
+            writer.flush();
+            outputStream.write(fileContentsBytes);
+            outputStream.flush();
         }
         // implement other methods ...
     }
     static private StringBuilder fileToStringBuilder(File file) throws FileNotFoundException {
-        Scanner sc = new Scanner(file);
-        StringBuilder sb = new StringBuilder();
-        while (sc.hasNextLine()){
-            sb.append(sc.nextLine()).append('\n');
+        try (Scanner sc = new Scanner(file)) {
+            StringBuilder sb = new StringBuilder();
+            while (sc.hasNextLine()) {
+                sb.append(sc.nextLine()).append('\n');
+            }
+            return sb;
         }
-        return sb;
     }
 
     static private byte[] fileToByteArray(File file) throws IOException{

@@ -22,15 +22,11 @@ public class Worker implements Runnable{
 
     @Override
     public void run(){
-        String line = "";
         try {
             String requestLine = reader.readLine();
-//            String method = parts[0];
-//            TODO: handle methods other than GET
-//            String path = parts[1];
-//            String version = parts[2].split("/")[1];
             String[]parts;
             HashMap<String, String> headers = new HashMap<>();
+            String line;
             while (true){
                 line = reader.readLine();
                 if (line == null || line.isEmpty()) break;
