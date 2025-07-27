@@ -10,20 +10,15 @@ public class Worker implements Runnable{
 
     Worker(Socket socket) throws Exception {
         this.socket = socket;
-        try {
-            reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-            writer = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream()));
-        } catch (Exception e){
-            System.out.println(e.getMessage());
-            throw new Exception("cannot open reader/writer!");
-        }
+        reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+        writer = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream()));
     }
 
     @Override
     public void run(){
         try {
             String requestLine = reader.readLine();
-            String[]parts;
+            String []parts;
             HashMap<String, String> headers = new HashMap<>();
             String line;
             while (true){

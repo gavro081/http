@@ -11,19 +11,12 @@ public class Server implements Runnable{
     public void run(){
         try (ServerSocket socket = new ServerSocket(port)){
             System.out.println("server listening on port: " + port);
-            Socket clientSocket;
             while (true){
                 try {
-                    clientSocket = socket.accept();
+                    Socket clientSocket = socket.accept();
+                    new Thread(new Worker(clientSocket)).start();
                 } catch (Exception e){
                     System.out.println(e.getMessage());
-                    continue;
-                }
-                try {
-                    Worker worker = new Worker(clientSocket);
-                    new Thread(worker).start();
-                } catch (Exception e){
-                    System.out.println("Could not start worker: " + e.getMessage());
                 }
             }
         } catch (Exception e){

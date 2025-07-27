@@ -2,9 +2,11 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 enum METHODS {
@@ -16,23 +18,26 @@ enum METHODS {
     DELETE
 }
 
+
 public class RequestHandler {
     private final String method;
     private final File requestedResource;
-    private HashMap<String, String> requestHeaders;
+    private final HashMap<String, String> requestHeaders;
     private final OutputStream outputStream;
     private final BufferedWriter writer;
 
-    RequestHandler(String requestLine, HashMap<String, String> headers, OutputStream outputStream){
+    RequestHandler(String requestLine, HashMap<String, String> headers, OutputStream outputStream)
+            throws IllegalArgumentException {
         // TODO: replace exceptions with relevant error codes
         System.out.println(requestLine);
         String []parts = requestLine.split(" ");
         if (parts.length != 3) throw new RuntimeException("Invalid params.");
 
+        METHODS.valueOf(parts[0]);
         this.method = parts[0];
 
-        String httpVersion = parts[2];
-        if (!httpVersion.startsWith("HTTP/")) throw new RuntimeException("Invalid HTTP version.");
+        String httpVersion = parts[2].strip();
+        if (!httpVersion.equals("HTTP/1.1")) throw new RuntimeException("Invalid HTTP version.");
 
         this.requestedResource = getFile(parts[1]);
         this.requestHeaders = headers;
@@ -49,68 +54,88 @@ public class RequestHandler {
         if (!resolved.startsWith(base)) throw new RuntimeException("Forbidden: Path escape attempt");
 
         File target = resolved.toFile();
+        // handle error404
         if (!target.exists())
-            // resort to react client-side routing
             return base.resolve("index.html").toFile();
         return target;
     }
 
-
-    private String getContentType(File file){
-        String []parts = file.getName().split("\\.");
+    private String getContentType(){
+        String []parts = this.requestedResource.getName().split("\\.");
         String extension = parts[parts.length - 1];
         return switch (extension){
-            // TODO: add others
             case "jpg" -> "image/jpeg";
             case "jpeg", "gif", "png" -> "image/" + extension;
+            case "svg" -> "image/svg+xml";
             case "css", "html" -> "text/" + extension;
             case "js" -> "text/javascript";
             case "json" -> "application/json";
-            case "svg" -> "image/svg+xml";
             // this exception will only be thrown if the file exists, but its type is not supported
             default -> throw new RuntimeException("Extension " + extension + " not supported");
         };
     }
 
-    private LinkedHashMap<String, String> writeHeaders(int contentLength, String contentType){
-        LinkedHashMap<String, String> headers = new LinkedHashMap<>();
-        headers.put("Content-Type", contentType);
-        headers.put("Content-Length", Integer.toString(contentLength));
-        return headers;
+    private String getDate() {
+        return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
+    }
+
+    private void writeHeaders (int statusCode, int contentLength, String contentType, Map<String, String> extraHeaders)
+    throws IOException {
+        writer.write("HTTP/1.1 " + statusCode + " " + HttpStatus.getMessage(statusCode) + "\r\n");
+        writer.write("Content-Type: " + contentType + "\r\n");
+        writer.write("Content-Length: " + contentLength + "\r\n");
+        writer.write("Server: GavroHTTP\r\n");
+        writer.write("Date: " + getDate() + "\r\n");
+
+        if (extraHeaders != null){
+            for (Map.Entry<String, String> header: extraHeaders.entrySet()){
+                writer.write(header.getKey() + ": " + header.getValue() + "\r\n");
+            }
+        }
+
+        writer.write("\r\n");
+        writer.flush();
     }
 
     public void handleRequest() throws IOException {
-        // currently only handles successful get requests :)
-        if (this.method.equals("GET")){
-            // if we make it here the requested resource must exist
-            String contentType = getContentType(requestedResource);
-            if (contentType.isBlank()) throw new RuntimeException();
-            byte[] fileContentsBytes;
-            if (contentType.startsWith("image")) {
-                fileContentsBytes = fileToByteArray(requestedResource);
-            } else {
-                fileContentsBytes = fileToStringBuilder(this.requestedResource)
-                        .toString()
-                        .getBytes(StandardCharsets.UTF_8);
-            }
-            LinkedHashMap<String, String> responseHeaders = this.writeHeaders(fileContentsBytes.length, contentType);
-            writer.write("HTTP/1.1 200 OK\r\n");
-            responseHeaders.forEach((key, val) -> {
-                try {
-                    writer.write(key + ": " + val + "\r\n");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            writer.write("\r\n");
-            writer.flush();
-            outputStream.write(fileContentsBytes);
+        switch (method){
+            case "GET", "HEAD" -> handleSuccessRequest();
+            default -> handleUnsupportedMethod();
+        }
+    }
+
+    private void handleSuccessRequest() throws IOException{
+        String contentType = getContentType();
+        if (contentType.isBlank())
+            throw new RuntimeException("Unsupported or unknown content type");
+        byte[] body = contentType.startsWith("image") ?
+                fileToByteArray() :
+                textFileToByteArray();
+
+        writeHeaders(200, body.length, contentType, null);
+
+        if (!method.equals("HEAD")) {
+            outputStream.write(body);
             outputStream.flush();
         }
-        // implement other methods ...
     }
-    static private StringBuilder fileToStringBuilder(File file) throws FileNotFoundException {
-        try (Scanner sc = new Scanner(file)) {
+
+    private void handleUnsupportedMethod() throws IOException{
+        String contentType = "application/json";
+        byte[] message = "{\"detail\": \"Method not allowed.\"}"
+                .getBytes(StandardCharsets.UTF_8);
+
+        Map<String, String> extraHeaders = Map.ofEntries(
+                Map.entry("Allow", "GET, HEAD")
+        );
+        writeHeaders(405, message.length, contentType, extraHeaders);
+        outputStream.write(message);
+        outputStream.flush();
+    }
+
+
+    private StringBuilder fileToStringBuilder() throws FileNotFoundException{
+        try (Scanner sc = new Scanner(this.requestedResource)) {
             StringBuilder sb = new StringBuilder();
             while (sc.hasNextLine()) {
                 sb.append(sc.nextLine()).append('\n');
@@ -119,7 +144,11 @@ public class RequestHandler {
         }
     }
 
-    static private byte[] fileToByteArray(File file) throws IOException{
-        return Files.readAllBytes(file.toPath());
+    private byte[] fileToByteArray() throws IOException{
+        return Files.readAllBytes(this.requestedResource.toPath());
+    }
+
+    private byte[] textFileToByteArray() throws FileNotFoundException{
+        return fileToStringBuilder().toString().getBytes(StandardCharsets.UTF_8);
     }
 }
