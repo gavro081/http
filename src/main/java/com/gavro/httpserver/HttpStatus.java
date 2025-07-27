@@ -1,7 +1,9 @@
+package com.gavro.httpserver;
+
 import java.util.Map;
 
-public class HttpStatus {
-    public static final Map<Integer, String> STATUS_MESSAGES = Map.ofEntries(
+public final class HttpStatus {
+    private static final Map<Integer, String> STATUS_MESSAGES = Map.ofEntries(
             Map.entry(100, "Continue"),
             Map.entry(200, "OK"),
             Map.entry(201, "Created"),
@@ -11,11 +13,15 @@ public class HttpStatus {
             Map.entry(404, "Not Found"),
             Map.entry(405, "Method Not Allowed"),
             Map.entry(500, "Internal Server Error")
-            );
+    );
+
+    private HttpStatus() {
+        throw new UnsupportedOperationException("Utility class");
+    }
 
     public static String getMessage(int statusCode) {
-        String message =  STATUS_MESSAGES.get(statusCode);
-        if (message == null){
+        String message = STATUS_MESSAGES.get(statusCode);
+        if (message == null) {
             throw new IllegalArgumentException("Unknown status code: " + statusCode);
         }
         return message;
