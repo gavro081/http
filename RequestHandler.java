@@ -18,6 +18,10 @@ enum METHODS {
     DELETE
 }
 
+class BadRequestException extends Exception{
+    String message;
+    BadRequestException(String message) {this.message = message;}
+}
 
 public class RequestHandler {
     private final String method;
@@ -26,32 +30,40 @@ public class RequestHandler {
     private final OutputStream outputStream;
     private final BufferedWriter writer;
 
+
     RequestHandler(String requestLine, HashMap<String, String> headers, OutputStream outputStream)
-            throws IllegalArgumentException {
-        // TODO: replace exceptions with relevant error codes
+            throws IOException, BadRequestException {
         System.out.println(requestLine);
-        String []parts = requestLine.split(" ");
-        if (parts.length != 3) throw new RuntimeException("Invalid params.");
-
-        METHODS.valueOf(parts[0]);
-        this.method = parts[0];
-
-        String httpVersion = parts[2].strip();
-        if (!httpVersion.equals("HTTP/1.1")) throw new RuntimeException("Invalid HTTP version.");
-
-        this.requestedResource = getFile(parts[1]);
-        this.requestHeaders = headers;
-
         // stream is for bytes, writer is for text
         this.outputStream = outputStream;
         this.writer = new BufferedWriter(new OutputStreamWriter(outputStream));
+
+        String []parts = requestLine.split(" ");
+        if (parts.length != 3) {
+            throw new BadRequestException("Invalid parameters.");
+        }
+        try {
+            METHODS.valueOf(parts[0]);
+        } catch (IllegalArgumentException e){
+            throw new BadRequestException("Method not recognized.");
+        }
+        this.method = parts[0];
+
+        String httpVersion = parts[2].strip();
+        if (!httpVersion.equals("HTTP/1.1")) {
+            throw new BadRequestException("Invalid HTTP version.");
+        }
+
+        this.requestedResource = getFile(parts[1]);
+        this.requestHeaders = headers;
     }
 
-    private static File getFile(String requestTarget) {
+    private File getFile(String requestTarget) throws IOException{
         Path base = Path.of("reactapp/dist").toAbsolutePath().normalize();
         String relativePath = requestTarget.equals("/") ? "index.html" : requestTarget.substring(1);
         Path resolved = base.resolve(relativePath).normalize();
-        if (!resolved.startsWith(base)) throw new RuntimeException("Forbidden: Path escape attempt");
+        if (!resolved.startsWith(base))
+            handleForbidden();
 
         File target = resolved.toFile();
         // handle error404
@@ -75,11 +87,11 @@ public class RequestHandler {
         };
     }
 
-    private String getDate() {
+    static String getDate() {
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
     }
 
-    private void writeHeaders (int statusCode, int contentLength, String contentType, Map<String, String> extraHeaders)
+    static void writeHeaders (BufferedWriter writer, int statusCode, int contentLength, String contentType, Map<String, String> extraHeaders)
     throws IOException {
         writer.write("HTTP/1.1 " + statusCode + " " + HttpStatus.getMessage(statusCode) + "\r\n");
         writer.write("Content-Type: " + contentType + "\r\n");
@@ -112,7 +124,7 @@ public class RequestHandler {
                 fileToByteArray() :
                 textFileToByteArray();
 
-        writeHeaders(200, body.length, contentType, null);
+        writeHeaders(writer, 200, body.length, contentType, null);
 
         if (!method.equals("HEAD")) {
             outputStream.write(body);
@@ -120,19 +132,36 @@ public class RequestHandler {
         }
     }
 
-    private void handleUnsupportedMethod() throws IOException{
+    private void handleUnsupportedMethod() throws IOException {
         String contentType = "application/json";
-        byte[] message = "{\"detail\": \"Method not allowed.\"}"
+        byte[] body = "{\"detail\": \"Method not allowed.\"}"
                 .getBytes(StandardCharsets.UTF_8);
 
         Map<String, String> extraHeaders = Map.ofEntries(
                 Map.entry("Allow", "GET, HEAD")
         );
-        writeHeaders(405, message.length, contentType, extraHeaders);
-        outputStream.write(message);
+        writeHeaders(writer, 405, body.length, contentType, extraHeaders);
+        outputStream.write(body);
         outputStream.flush();
     }
 
+    static void handleBadRequest(OutputStream outputStream, String message) throws IOException {
+        String contentType = "application/json";
+        byte[] body = ("{\"detail\": \"" + message + "\"}")
+                .getBytes(StandardCharsets.UTF_8);
+        writeHeaders(new BufferedWriter(new OutputStreamWriter(outputStream)), 400, body.length, contentType, null);
+        outputStream.write(body);
+        outputStream.flush();
+    }
+
+    private void handleForbidden() throws IOException {
+        String contentType = "application/json";
+        byte[] body = ("{\"detail\": \"Forbidden path.\"}")
+                .getBytes(StandardCharsets.UTF_8);
+        writeHeaders(writer, 403, body.length, contentType, null);
+        outputStream.write(body);
+        outputStream.flush();
+    }
 
     private StringBuilder fileToStringBuilder() throws FileNotFoundException{
         try (Scanner sc = new Scanner(this.requestedResource)) {

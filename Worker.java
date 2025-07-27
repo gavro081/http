@@ -29,7 +29,14 @@ public class Worker implements Runnable{
             }
             RequestHandler handler = new RequestHandler(requestLine, headers, socket.getOutputStream());
             handler.handleRequest();
-        } catch (Exception e){
+        } catch (BadRequestException e){
+            try {
+                RequestHandler.handleBadRequest(socket.getOutputStream(), e.message);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+        catch (Exception e){
             System.out.println(e.getMessage());
         } finally {
             try {
