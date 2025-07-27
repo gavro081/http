@@ -25,6 +25,7 @@ public class RequestHandler {
 
     RequestHandler(String requestLine, HashMap<String, String> headers, OutputStream outputStream){
         // TODO: replace exceptions with relevant error codes
+        System.out.println(requestLine);
         String []parts = requestLine.split(" ");
         if (parts.length != 3) throw new RuntimeException("Invalid params.");
 
@@ -42,13 +43,15 @@ public class RequestHandler {
     }
 
     private static File getFile(String requestTarget) {
-        Path base = Path.of("static").toAbsolutePath().normalize();
+        Path base = Path.of("reactapp/dist").toAbsolutePath().normalize();
         String relativePath = requestTarget.equals("/") ? "index.html" : requestTarget.substring(1);
         Path resolved = base.resolve(relativePath).normalize();
         if (!resolved.startsWith(base)) throw new RuntimeException("Forbidden: Path escape attempt");
 
         File target = resolved.toFile();
-        if (!target.exists()) throw new RuntimeException("Target resource doesn't exist. Path: " + target);
+        if (!target.exists())
+            // resort to react client-side routing
+            return base.resolve("index.html").toFile();
         return target;
     }
 
@@ -58,10 +61,12 @@ public class RequestHandler {
         String extension = parts[parts.length - 1];
         return switch (extension){
             // TODO: add others
+            case "jpg" -> "image/jpeg";
             case "jpeg", "gif", "png" -> "image/" + extension;
             case "css", "html" -> "text/" + extension;
             case "js" -> "text/javascript";
             case "json" -> "application/json";
+            case "svg" -> "image/svg+xml";
             // this exception will only be thrown if the file exists, but its type is not supported
             default -> throw new RuntimeException("Extension " + extension + " not supported");
         };
@@ -70,7 +75,6 @@ public class RequestHandler {
     private LinkedHashMap<String, String> writeHeaders(int contentLength, String contentType){
         LinkedHashMap<String, String> headers = new LinkedHashMap<>();
         headers.put("Content-Type", contentType);
-        headers.put("Connection", "close");
         headers.put("Content-Length", Integer.toString(contentLength));
         return headers;
     }

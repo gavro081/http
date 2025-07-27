@@ -22,7 +22,6 @@ public class Server implements Runnable{
                 try {
                     Worker worker = new Worker(clientSocket);
                     new Thread(worker).start();
-                    System.out.println("Starting worker for " + socket.getInetAddress());
                 } catch (Exception e){
                     System.out.println("Could not start worker: " + e.getMessage());
                 }
