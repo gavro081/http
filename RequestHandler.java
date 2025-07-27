@@ -66,7 +66,6 @@ public class RequestHandler {
             handleForbidden();
 
         File target = resolved.toFile();
-        // handle error404
         if (!target.exists())
             return base.resolve("index.html").toFile();
         return target;

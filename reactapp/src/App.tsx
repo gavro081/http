@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import LandingPage from "./components/LandingPage.tsx";
+import NotFound from "./components/NotFound.tsx";
 import Test from "./components/Test.tsx";
 
 const router = createBrowserRouter([
@@ -10,6 +11,10 @@ const router = createBrowserRouter([
 	{
 		path: "/test",
 		element: <Test />,
+	},
+	{
+		path: "*",
+		element: <NotFound />,
 	},
 ]);
 
