@@ -37,7 +37,7 @@ public class Worker implements Runnable {
             
             Map<String, String> headers = parseHeaders(reader);
             
-            RequestHandler handler = new RequestHandler(requestLine, headers, outputStream);
+            RequestHandler handler = RequestHandler.fromRequest(requestLine, headers, outputStream);
             handler.handleRequest();
             
         } catch (BadRequestException e) {

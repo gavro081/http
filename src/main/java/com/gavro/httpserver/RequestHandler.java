@@ -1,50 +1,58 @@
 package com.gavro.httpserver;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import com.gavro.httpserver.config.ServerConfig;
 import com.gavro.httpserver.exceptions.BadRequestException;
 
-public class RequestHandler {
-    private static final Logger LOGGER = Logger.getLogger(RequestHandler.class.getName());
-    
-    private final HttpMethod method;
-    private final File requestedResource;
-    private final Map<String, String> requestHeaders;
-    private final OutputStream outputStream;
-    private final BufferedWriter writer;
+abstract public class RequestHandler {
+    protected static final Logger LOGGER = Logger.getLogger(RequestHandler.class.getName());
+    protected final String requestLine;
+    protected final HttpMethod method;
+    protected final Map<String, String> requestHeaders;
+    protected final OutputStream outputStream;
+    protected final BufferedWriter writer;
 
     public RequestHandler(String requestLine, Map<String, String> headers, OutputStream outputStream)
-            throws IOException, BadRequestException {
-        LOGGER.info("Processing request: " + requestLine);
-        
-        this.outputStream = outputStream;
-        this.writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
-        this.requestHeaders = headers;
+    throws BadRequestException {
+        String[] parts = requestLine.split("\\s+");
+        HttpMethod method = parseMethod(parts[0]);
+        validateHttpVersion(parts[2]);
 
+        this.requestLine = requestLine;
+        this.requestHeaders = headers;
+        this.outputStream = outputStream;
+        this.method = method;
+        this.writer = new BufferedWriter(new OutputStreamWriter(outputStream));
+    }
+
+    public static RequestHandler fromRequest(String requestLine, Map<String, String> headers, OutputStream outputStream)
+        throws IOException, BadRequestException {
+        LOGGER.info("Processing request: " + requestLine);
         String[] parts = requestLine.split("\\s+");
         if (parts.length != 3) {
             throw new BadRequestException("Invalid request line format");
         }
 
-        this.method = parseMethod(parts[0]);
-        validateHttpVersion(parts[2]);
-        this.requestedResource = resolveResource(parts[1]);
+        String target = parts[1];
+        if (target.startsWith("/api/")) {
+            return new BackendHandler(requestLine, headers, outputStream);
+        } else {
+            return new FrontendHandler(requestLine, headers, outputStream);
+        }
     }
+
+    abstract public void handleRequest() throws IOException;
     
-    private HttpMethod parseMethod(String methodString) throws BadRequestException {
+    protected static HttpMethod parseMethod(String methodString) throws BadRequestException {
         try {
             return HttpMethod.valueOf(methodString.toUpperCase());
         } catch (IllegalArgumentException e) {
@@ -52,39 +60,13 @@ public class RequestHandler {
         }
     }
     
-    private void validateHttpVersion(String httpVersion) throws BadRequestException {
+    protected static void validateHttpVersion(String httpVersion) throws BadRequestException {
         if (!"HTTP/1.1".equals(httpVersion.trim())) {
             throw new BadRequestException("Unsupported HTTP version: " + httpVersion);
         }
     }
 
-    private File resolveResource(String requestTarget) throws BadRequestException, IOException {
-        try {
-            Path basePath = Path.of(ServerConfig.DEFAULT_CONTENT_ROOT).toAbsolutePath().normalize();
-            String relativePath = "/".equals(requestTarget) ? ServerConfig.DEFAULT_INDEX_FILE : requestTarget.substring(1);
-            Path resolvedPath = basePath.resolve(relativePath).normalize();
-            
-            if (!resolvedPath.startsWith(basePath)) {
-                throw new BadRequestException("Forbidden: Directory traversal attempt");
-            }
-
-            File targetFile = resolvedPath.toFile();
-            if (!targetFile.exists()) {
-                return basePath.resolve(ServerConfig.DEFAULT_INDEX_FILE).toFile();
-            }
-            
-            if (targetFile.isDirectory()) {
-                File indexFile = new File(targetFile, ServerConfig.DEFAULT_INDEX_FILE);
-                return indexFile.exists() ? indexFile : basePath.resolve(ServerConfig.DEFAULT_INDEX_FILE).toFile();
-            }
-            
-            return targetFile;
-        } catch (Exception e) {
-            throw new BadRequestException("Invalid request target: " + requestTarget);
-        }
-    }
-
-    private String determineContentType() {
+    protected String determineContentType(File requestedResource) {
         String fileName = requestedResource.getName();
         int dotIndex = fileName.lastIndexOf('.');
         
@@ -109,18 +91,18 @@ public class RequestHandler {
         };
     }
 
-    private static String formatHttpDate() {
+    protected static String formatHttpDate() {
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
     }
 
-    private static void writeHeaders(BufferedWriter writer, int statusCode, int contentLength, 
+    protected static void writeHeaders(BufferedWriter writer, int statusCode, int contentLength,
                                    String contentType, Map<String, String> extraHeaders) throws IOException {
         writer.write("HTTP/1.1 " + statusCode + " " + HttpStatus.getMessage(statusCode) + "\r\n");
         writer.write("Content-Type: " + contentType + "\r\n");
         writer.write("Content-Length: " + contentLength + "\r\n");
         writer.write("Server: " + ServerConfig.SERVER_NAME + "\r\n");
         writer.write("Date: " + formatHttpDate() + "\r\n");
-//        writer.write("Connection: close\r\n"); todo
+//        writer.write("Connection: close\r\n");
 
         if (extraHeaders != null) {
             for (Map.Entry<String, String> header : extraHeaders.entrySet()) {
@@ -132,47 +114,25 @@ public class RequestHandler {
         writer.flush();
     }
 
-    public void handleRequest() throws IOException {
-        switch (method) {
-            case GET, HEAD -> handleGetOrHead();
-            default -> handleUnsupportedMethod();
-        }
-    }
-
-    private void handleGetOrHead() throws IOException {
-        try {
-            if (!requestedResource.exists() || !requestedResource.canRead()) {
-                handleNotFound();
-                return;
-            }
-
-            String contentType = determineContentType();
-            byte[] body = Files.readAllBytes(requestedResource.toPath());
-
-            writeHeaders(writer, 200, body.length, contentType, null);
-
-            if (method == HttpMethod.GET) {
-                outputStream.write(body);
-                outputStream.flush();
-            }
-        } catch (IOException e) {
-            LOGGER.severe("Error serving file: " + requestedResource.getPath());
-            handleInternalServerError();
-        }
-    }
-
-    private void handleUnsupportedMethod() throws IOException {
+    protected void handleUnsupportedMethod(List<String> supportedMethods) throws IOException {
         String contentType = "application/json; charset=utf-8";
-        String responseBody = "{\"error\": \"Method not allowed\", \"allowed\": [\"GET\", \"HEAD\"]}";
-        byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
+        String allowedJsonArray = supportedMethods.stream()
+                .map(method -> "\"" + method + "\"")
+                .collect(Collectors.joining(", "));
 
-        Map<String, String> extraHeaders = Map.of("Allow", "GET, HEAD");
+        String responseBody = String.format(
+                "{\"error\": \"Method not allowed\", \"allowed\": [%s]}",
+                allowedJsonArray
+        );
+        
+        byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
+        Map<String, String> extraHeaders = Map.of("Allow", String.join(", ", supportedMethods));
         writeHeaders(writer, 405, body.length, contentType, extraHeaders);
         outputStream.write(body);
         outputStream.flush();
     }
 
-    private void handleNotFound() throws IOException {
+    protected void handleNotFound() throws IOException {
         String contentType = "application/json; charset=utf-8";
         String responseBody = "{\"error\": \"Not found\", \"message\": \"The requested resource was not found\"}";
         byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
@@ -182,7 +142,7 @@ public class RequestHandler {
         outputStream.flush();
     }
 
-    private void handleInternalServerError() throws IOException {
+    protected void handleInternalServerError() throws IOException {
         String contentType = "application/json; charset=utf-8";
         String responseBody = "{\"error\": \"Internal server error\"}";
         byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
