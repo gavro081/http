@@ -3,7 +3,6 @@ package com.gavro.httpserver;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 import com.gavro.httpserver.exceptions.BadRequestException;
@@ -25,9 +24,7 @@ public class BackendHandler extends RequestHandler{
         String message = """
                          {"data": "hello from backend server"}
                          """;
-        int contentLength = message.getBytes().length;
-        String contentType = "application/json";
-        writeHeaders(writer, 200, contentLength, contentType, new HashMap<>());
+        writeHeadersWithBody(writer, 200, message.length(), "application/json", null);
         writer.write(message);
         writer.flush();
     }

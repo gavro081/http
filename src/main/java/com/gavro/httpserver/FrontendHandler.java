@@ -38,8 +38,17 @@ public class FrontendHandler extends RequestHandler{
 
             String contentType = determineContentType(requestedResource);
             byte[] body = Files.readAllBytes(requestedResource.toPath());
+            long length = requestedResource.length();
+            long lastModified = requestedResource.lastModified();
+            String eTag = "W/\"" + length + "-" + lastModified + "\"";
 
-            writeHeaders(writer, 200, body.length, contentType, null);
+            if (checkIfCacheHit(eTag)) return;
+
+            Map<String, String> extraHeaders = Map.ofEntries(
+                    Map.entry("Etag", eTag),
+                    Map.entry("Cache-Control", "public, max-age=0")
+            );
+            writeHeadersWithBody(writer, 200, body.length, contentType, extraHeaders);
 
             if (method == HttpMethod.GET) {
                 outputStream.write(body);
@@ -49,6 +58,15 @@ public class FrontendHandler extends RequestHandler{
             LOGGER.log(Level.SEVERE, "Error serving file: {0}", requestedResource.getPath());
             handleInternalServerError();
         }
+    }
+
+    private boolean checkIfCacheHit(String eTag) throws IOException{
+        String ifNoneMatch = requestHeaders.get("if-none-match");
+        if (eTag.equals(ifNoneMatch)) {
+            writeHeadersWithoutBody(writer, 304, Map.of("Etag", eTag));
+            return true;
+        }
+        return false;
     }
 
     private static File resolveResource(String requestTarget) throws BadRequestException {

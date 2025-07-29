@@ -100,14 +100,11 @@ abstract public class RequestHandler {
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
     }
 
-    protected static void writeHeaders(BufferedWriter writer, int statusCode, int contentLength,
-                                   String contentType, Map<String, String> extraHeaders) throws IOException {
-        writer.write("HTTP/1.1 " + statusCode + " " + HttpStatus.getMessage(statusCode) + "\r\n");
+    protected static void writeHeadersWithBody(BufferedWriter writer, int statusCode, int contentLength, String contentType,
+                                               Map<String, String> extraHeaders) throws IOException {
+        writeHeadersNoFlush(writer, statusCode);
         writer.write("Content-Type: " + contentType + "\r\n");
         writer.write("Content-Length: " + contentLength + "\r\n");
-        writer.write("Server: " + ServerConfig.SERVER_NAME + "\r\n");
-        writer.write("Date: " + formatHttpDate() + "\r\n");
-//        writer.write("Connection: close\r\n");
 
         if (extraHeaders != null) {
             for (Map.Entry<String, String> header : extraHeaders.entrySet()) {
@@ -117,6 +114,25 @@ abstract public class RequestHandler {
 
         writer.write("\r\n");
         writer.flush();
+    }
+
+    protected static void writeHeadersWithoutBody(BufferedWriter writer, int statusCode, Map<String, String> extraHeaders) throws IOException {
+        writeHeadersNoFlush(writer, statusCode);
+
+        if (extraHeaders != null) {
+            for (Map.Entry<String, String> header : extraHeaders.entrySet()) {
+                writer.write(header.getKey() + ": " + header.getValue() + "\r\n");
+            }
+        }
+
+        writer.write("\r\n");
+        writer.flush();
+    }
+
+    private static void writeHeadersNoFlush(BufferedWriter writer, int statusCode) throws IOException {
+        writer.write("HTTP/1.1 " + statusCode + " " + HttpStatus.getMessage(statusCode) + "\r\n");
+        writer.write("Server: " + ServerConfig.SERVER_NAME + "\r\n");
+        writer.write("Date: " + formatHttpDate() + "\r\n");
     }
 
     protected void handleUnsupportedMethod(List<String> supportedMethods) throws IOException {
@@ -132,7 +148,7 @@ abstract public class RequestHandler {
 
         byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
         Map<String, String> extraHeaders = Map.of("Allow", String.join(", ", supportedMethods));
-        writeHeaders(writer, 405, body.length, contentType, extraHeaders);
+        writeHeadersWithBody(writer, 405, body.length, contentType, extraHeaders);
         outputStream.write(body);
         outputStream.flush();
     }
@@ -142,7 +158,7 @@ abstract public class RequestHandler {
         String responseBody = "{\"error\": \"Not found\", \"message\": \"The requested resource was not found\"}";
         byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
 
-        writeHeaders(writer, 404, body.length, contentType, null);
+        writeHeadersWithBody(writer, 404, body.length, contentType, null);
         outputStream.write(body);
         outputStream.flush();
     }
@@ -152,7 +168,7 @@ abstract public class RequestHandler {
         String responseBody = "{\"error\": \"Internal server error\"}";
         byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
 
-        writeHeaders(writer, 500, body.length, contentType, null);
+        writeHeadersWithBody(writer, 500, body.length, contentType, null);
         outputStream.write(body);
         outputStream.flush();
     }
@@ -163,8 +179,8 @@ abstract public class RequestHandler {
             String responseBody = "{\"error\": \"Bad request\", \"message\": \"" + 
                                  message.replace("\"", "\\\"") + "\"}";
             byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
-            
-            writeHeaders(writer, 400, body.length, contentType, null);
+
+            writeHeadersWithBody(writer, 400, body.length, contentType, null);
             outputStream.write(body);
             outputStream.flush();
         }
