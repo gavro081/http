@@ -1,8 +1,5 @@
 package com.gavro.httpserver;
 
-import com.gavro.httpserver.config.ServerConfig;
-import com.gavro.httpserver.exceptions.BadRequestException;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -10,6 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+
+import com.gavro.httpserver.config.ServerConfig;
+import com.gavro.httpserver.exceptions.BadRequestException;
 
 public class FrontendHandler extends RequestHandler{
     private final File requestedResource;
@@ -45,7 +46,7 @@ public class FrontendHandler extends RequestHandler{
                 outputStream.flush();
             }
         } catch (IOException e) {
-            LOGGER.severe("Error serving file: " + requestedResource.getPath());
+            LOGGER.log(Level.SEVERE, "Error serving file: {0}", requestedResource.getPath());
             handleInternalServerError();
         }
     }
@@ -71,7 +72,7 @@ public class FrontendHandler extends RequestHandler{
             }
 
             return targetFile;
-        } catch (Exception e) {
+        } catch (BadRequestException e) {
             throw new BadRequestException("Invalid request target: " + requestTarget);
         }
     }

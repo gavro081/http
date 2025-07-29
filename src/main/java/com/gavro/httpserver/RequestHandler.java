@@ -1,12 +1,17 @@
 package com.gavro.httpserver;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -24,20 +29,20 @@ abstract public class RequestHandler {
     public RequestHandler(String requestLine, Map<String, String> headers, OutputStream outputStream)
     throws BadRequestException {
         String[] parts = requestLine.split("\\s+");
-        HttpMethod method = parseMethod(parts[0]);
+        HttpMethod parsedMethod = parseMethod(parts[0]);
         validateHttpVersion(parts[2]);
 
         this.requestLine = requestLine;
         this.requestHeaders = headers;
         this.outputStream = outputStream;
-        this.method = method;
+        this.method = parsedMethod;
         this.writer = new BufferedWriter(new OutputStreamWriter(outputStream));
     }
 
     public static RequestHandler fromRequest(String requestLine, Map<String, String> headers, OutputStream outputStream)
         throws IOException, BadRequestException {
-        LOGGER.info("Processing request: " + requestLine);
-        String[] parts = requestLine.split("\\s+");
+        LOGGER.log(Level.INFO, "Processing request: {0}", requestLine);
+        String[] parts = requestLine.split("\\s+");        
         if (parts.length != 3) {
             throw new BadRequestException("Invalid request line format");
         }
@@ -117,14 +122,14 @@ abstract public class RequestHandler {
     protected void handleUnsupportedMethod(List<String> supportedMethods) throws IOException {
         String contentType = "application/json; charset=utf-8";
         String allowedJsonArray = supportedMethods.stream()
-                .map(method -> "\"" + method + "\"")
+                .map(method_ -> "\"" + method_ + "\"")
                 .collect(Collectors.joining(", "));
 
         String responseBody = String.format(
                 "{\"error\": \"Method not allowed\", \"allowed\": [%s]}",
                 allowedJsonArray
         );
-        
+
         byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
         Map<String, String> extraHeaders = Map.of("Allow", String.join(", ", supportedMethods));
         writeHeaders(writer, 405, body.length, contentType, extraHeaders);
