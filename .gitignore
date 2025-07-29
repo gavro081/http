@@ -26,6 +26,9 @@ Thumbs.db
 *.log
 logs/
 
+# Configuration files with sensitive data
+db.properties
+
 # Temporary files
 *.tmp
 *.temp
