@@ -53,11 +53,4 @@ public final class DatabaseConfig {
         }
         return value.trim();
     }
-    
-    public static void validateConfiguration() {
-        getUrl();
-        getUser();
-        getPassword();
-        LOGGER.info("Database configuration validated successfully");
-    }
 }

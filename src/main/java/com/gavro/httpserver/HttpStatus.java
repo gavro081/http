@@ -7,7 +7,7 @@ public final class HttpStatus {
             Map.entry(100, "Continue"),
             Map.entry(200, "OK"),
             Map.entry(201, "Created"),
-            Map.entry(304, "Not modified"),
+            Map.entry(304, "Not Modified"),
             Map.entry(400, "Bad Request"),
             Map.entry(401, "Unauthorized"),
             Map.entry(403, "Forbidden"),

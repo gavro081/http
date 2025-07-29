@@ -3,18 +3,12 @@ package com.gavro.httpserver;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.gavro.httpserver.config.DatabaseConfig;
 import com.gavro.httpserver.config.ServerConfig;
 
 public class Server implements Runnable {
@@ -73,28 +67,10 @@ public class Server implements Runnable {
     public static void main(String[] args) {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : ServerConfig.DEFAULT_PORT;
 
-        try {
-            DatabaseConfig.validateConfiguration();
-
-            try (Connection conn = DriverManager.getConnection(
-                    DatabaseConfig.getUrl(), 
-                    DatabaseConfig.getUser(), 
-                    DatabaseConfig.getPassword())) {
-                Statement statement = conn.createStatement();
-                ResultSet rs = statement.executeQuery("SELECT * FROM example;");
-                while (rs.next()) {
-                    System.out.println("User: " + rs.getString("name"));
-                }
-                LOGGER.info("Database connection test successful");
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Database connection failed", e);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Configuration error", e);
-        }
-        
-        // Server server = new Server(port);
-        // Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
-        // server.run();
+         Server server = new Server(port);
+         Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
+         Runtime.getRuntime().addShutdownHook(new Thread(Database::shutdown));
+         Database.init();
+         server.run();
     }
 }
