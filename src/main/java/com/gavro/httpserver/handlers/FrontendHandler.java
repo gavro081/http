@@ -1,4 +1,4 @@
-package com.gavro.httpserver;
+package com.gavro.httpserver.handlers;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,14 +11,19 @@ import java.util.logging.Level;
 
 import com.gavro.httpserver.config.ServerConfig;
 import com.gavro.httpserver.exceptions.BadRequestException;
+import com.gavro.httpserver.exceptions.HttpVersionNotSupportedException;
+import com.gavro.httpserver.http.HttpConstants;
+import com.gavro.httpserver.http.HttpMethod;
+import com.gavro.httpserver.http.HttpRequestParser;
 
 public class FrontendHandler extends RequestHandler{
     private final File requestedResource;
 
-    FrontendHandler(String requestLine, Map<String, String> headers, OutputStream outputStream)
-    throws BadRequestException {
+    protected FrontendHandler(String requestLine, Map<String, String> headers, OutputStream outputStream)
+    throws BadRequestException, HttpVersionNotSupportedException {
         super(requestLine, headers, outputStream);
-        this.requestedResource = resolveResource(requestLine.split("\\s+")[1]);
+        HttpRequestParser.ParsedRequestLine parsed = HttpRequestParser.parseRequestLine(requestLine);
+        this.requestedResource = resolveResource(parsed.target());
     }
 
     @Override
@@ -45,8 +50,8 @@ public class FrontendHandler extends RequestHandler{
             if (checkIfCacheHit(eTag)) return;
 
             Map<String, String> extraHeaders = Map.ofEntries(
-                    Map.entry("Etag", eTag),
-                    Map.entry("Cache-Control", "public, max-age=0")
+                    Map.entry(HttpConstants.HEADER_ETAG, eTag),
+                    Map.entry(HttpConstants.HEADER_CACHE_CONTROL, HttpConstants.CACHE_CONTROL_PUBLIC_MAX_AGE_0)
             );
             writeHeadersWithBody(writer, 200, body.length, contentType, extraHeaders);
 
@@ -61,9 +66,9 @@ public class FrontendHandler extends RequestHandler{
     }
 
     private boolean checkIfCacheHit(String eTag) throws IOException{
-        String ifNoneMatch = requestHeaders.get("if-none-match");
+        String ifNoneMatch = requestHeaders.get(HttpConstants.HEADER_IF_NONE_MATCH.toLowerCase());
         if (eTag.equals(ifNoneMatch)) {
-            writeHeadersWithoutBody(writer, 304, Map.of("Etag", eTag));
+            writeHeadersWithoutBody(writer, 304, Map.of(HttpConstants.HEADER_ETAG, eTag));
             return true;
         }
         return false;

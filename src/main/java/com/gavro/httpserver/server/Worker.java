@@ -1,4 +1,4 @@
-package com.gavro.httpserver;
+package com.gavro.httpserver.server;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,6 +13,9 @@ import java.util.logging.Logger;
 
 import com.gavro.httpserver.config.ServerConfig;
 import com.gavro.httpserver.exceptions.BadRequestException;
+import com.gavro.httpserver.exceptions.HttpVersionNotSupportedException;
+import com.gavro.httpserver.handlers.RequestHandler;
+import com.gavro.httpserver.handlers.RequestHandlerFactory;
 
 public class Worker implements Runnable {
     private static final Logger LOGGER = Logger.getLogger(Worker.class.getName());
@@ -37,12 +40,15 @@ public class Worker implements Runnable {
             
             Map<String, String> headers = parseHeaders(reader);
             
-            RequestHandler handler = RequestHandler.fromRequest(requestLine, headers, outputStream);
+            RequestHandler handler = RequestHandlerFactory.createHandler(requestLine, headers, outputStream);
             handler.handleRequest();
             
         } catch (BadRequestException e) {
             handleBadRequest(e.getMessage());
-        } catch (IOException e) {
+        } catch (HttpVersionNotSupportedException e){
+            handleVersionNotSupported(e.getMessage());
+        }
+        catch (IOException e) {
             LOGGER.log(Level.SEVERE, "IO error processing request", e);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Unexpected error processing request", e);
@@ -70,6 +76,14 @@ public class Worker implements Runnable {
             RequestHandler.handleBadRequest(outputStream, message);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error sending bad request response", e);
+        }
+    }
+
+    private void handleVersionNotSupported(String message) {
+        try (OutputStream outputStream = socket.getOutputStream()) {
+            RequestHandler.handleHttpNotSupported(outputStream, message);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Error sending HTTP version not supported response", e);
         }
     }
     

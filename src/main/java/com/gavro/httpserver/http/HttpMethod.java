@@ -1,4 +1,4 @@
-package com.gavro.httpserver;
+package com.gavro.httpserver.http;
 
 public enum HttpMethod {
     GET,

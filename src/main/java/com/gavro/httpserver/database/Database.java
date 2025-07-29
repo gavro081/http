@@ -1,11 +1,11 @@
-package com.gavro.httpserver;
+package com.gavro.httpserver.database;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import com.gavro.httpserver.config.DatabaseConfig;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-
-import java.sql.Connection;
-import java.sql.SQLException;
 
 public class Database {
     private static HikariDataSource dataSource;
@@ -13,7 +13,7 @@ public class Database {
     public static void init() {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(DatabaseConfig.getUrl());
-        config.setJdbcUrl(DatabaseConfig.getUrl());
+        config.setUsername(DatabaseConfig.getUser());
         config.setPassword(DatabaseConfig.getPassword());
         config.setMaximumPoolSize(10);
         config.setConnectionTimeout(5000); // 5s

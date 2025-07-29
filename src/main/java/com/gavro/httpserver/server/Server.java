@@ -1,4 +1,4 @@
-package com.gavro.httpserver;
+package com.gavro.httpserver.server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -10,6 +10,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.gavro.httpserver.config.ServerConfig;
+import com.gavro.httpserver.database.Database;
 
 public class Server implements Runnable {
     private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
@@ -27,7 +28,7 @@ public class Server implements Runnable {
     public void run() {
         running = true;
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            LOGGER.info("Server listening on port: " + port);
+            LOGGER.log(Level.INFO, String.format("Server listening on port: %d", port));
             
             while (running && !Thread.currentThread().isInterrupted()) {
                 try {

@@ -1,4 +1,4 @@
-package com.gavro.httpserver;
+package com.gavro.httpserver.handlers;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -11,12 +11,17 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import com.gavro.httpserver.config.ServerConfig;
 import com.gavro.httpserver.exceptions.BadRequestException;
+import com.gavro.httpserver.exceptions.HttpVersionNotSupportedException;
+import com.gavro.httpserver.http.HttpConstants;
+import com.gavro.httpserver.http.HttpMethod;
+import com.gavro.httpserver.http.HttpRequestParser;
+import com.gavro.httpserver.http.HttpStatus;
+import com.gavro.httpserver.utils.JsonResponseBuilder;
 
 abstract public class RequestHandler {
     protected static final Logger LOGGER = Logger.getLogger(RequestHandler.class.getName());
@@ -27,72 +32,40 @@ abstract public class RequestHandler {
     protected final BufferedWriter writer;
 
     public RequestHandler(String requestLine, Map<String, String> headers, OutputStream outputStream)
-    throws BadRequestException {
-        String[] parts = requestLine.split("\\s+");
-        HttpMethod parsedMethod = parseMethod(parts[0]);
-        validateHttpVersion(parts[2]);
-
+    throws BadRequestException, HttpVersionNotSupportedException {
+        HttpRequestParser.ParsedRequestLine parsed = HttpRequestParser.parseRequestLine(requestLine);
+        
         this.requestLine = requestLine;
         this.requestHeaders = headers;
         this.outputStream = outputStream;
-        this.method = parsedMethod;
+        this.method = parsed.method();
         this.writer = new BufferedWriter(new OutputStreamWriter(outputStream));
     }
 
-    public static RequestHandler fromRequest(String requestLine, Map<String, String> headers, OutputStream outputStream)
-        throws IOException, BadRequestException {
-        LOGGER.log(Level.INFO, "Processing request: {0}", requestLine);
-        String[] parts = requestLine.split("\\s+");        
-        if (parts.length != 3) {
-            throw new BadRequestException("Invalid request line format");
-        }
-
-        String target = parts[1];
-        if (target.startsWith("/api/")) {
-            return new BackendHandler(requestLine, headers, outputStream);
-        } else {
-            return new FrontendHandler(requestLine, headers, outputStream);
-        }
-    }
-
     abstract public void handleRequest() throws IOException;
-    
-    protected static HttpMethod parseMethod(String methodString) throws BadRequestException {
-        try {
-            return HttpMethod.valueOf(methodString.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Unsupported HTTP method: " + methodString);
-        }
-    }
-    
-    protected static void validateHttpVersion(String httpVersion) throws BadRequestException {
-        if (!"HTTP/1.1".equals(httpVersion.trim())) {
-            throw new BadRequestException("Unsupported HTTP version: " + httpVersion);
-        }
-    }
 
     protected String determineContentType(File requestedResource) {
         String fileName = requestedResource.getName();
         int dotIndex = fileName.lastIndexOf('.');
         
         if (dotIndex == -1) {
-            return "application/octet-stream";
+            return HttpConstants.CONTENT_TYPE_OCTET_STREAM;
         }
         
         String extension = fileName.substring(dotIndex + 1).toLowerCase();
         return switch (extension) {
-            case "html", "htm" -> "text/html; charset=utf-8";
-            case "css" -> "text/css; charset=utf-8";
-            case "js" -> "application/javascript; charset=utf-8";
-            case "json" -> "application/json; charset=utf-8";
-            case "txt" -> "text/plain; charset=utf-8";
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "png" -> "image/png";
-            case "gif" -> "image/gif";
-            case "svg" -> "image/svg+xml";
-            case "ico" -> "image/x-icon";
-            case "pdf" -> "application/pdf";
-            default -> "application/octet-stream";
+            case "html", "htm" -> HttpConstants.CONTENT_TYPE_HTML;
+            case "css" -> HttpConstants.CONTENT_TYPE_CSS;
+            case "js" -> HttpConstants.CONTENT_TYPE_JS;
+            case "json" -> HttpConstants.CONTENT_TYPE_JSON;
+            case "txt" -> HttpConstants.CONTENT_TYPE_PLAIN;
+            case "jpg", "jpeg" -> HttpConstants.CONTENT_TYPE_JPEG;
+            case "png" -> HttpConstants.CONTENT_TYPE_PNG;
+            case "gif" -> HttpConstants.CONTENT_TYPE_GIF;
+            case "svg" -> HttpConstants.CONTENT_TYPE_SVG;
+            case "ico" -> HttpConstants.CONTENT_TYPE_X_ICON;
+            case "pdf" -> HttpConstants.CONTENT_TYPE_PDF;
+            default -> HttpConstants.CONTENT_TYPE_OCTET_STREAM;
         };
     }
 
@@ -100,7 +73,7 @@ abstract public class RequestHandler {
         return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
     }
 
-    protected static void writeHeadersWithBody(BufferedWriter writer, int statusCode, int contentLength, String contentType,
+    public static void writeHeadersWithBody(BufferedWriter writer, int statusCode, int contentLength, String contentType,
                                                Map<String, String> extraHeaders) throws IOException {
         writeHeadersNoFlush(writer, statusCode);
         writer.write("Content-Type: " + contentType + "\r\n");
@@ -136,7 +109,6 @@ abstract public class RequestHandler {
     }
 
     protected void handleUnsupportedMethod(List<String> supportedMethods) throws IOException {
-        String contentType = "application/json; charset=utf-8";
         String allowedJsonArray = supportedMethods.stream()
                 .map(method_ -> "\"" + method_ + "\"")
                 .collect(Collectors.joining(", "));
@@ -146,43 +118,34 @@ abstract public class RequestHandler {
                 allowedJsonArray
         );
 
-        byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
-        Map<String, String> extraHeaders = Map.of("Allow", String.join(", ", supportedMethods));
-        writeHeadersWithBody(writer, 405, body.length, contentType, extraHeaders);
-        outputStream.write(body);
-        outputStream.flush();
+        Map<String, String> extraHeaders = Map.of(HttpConstants.HEADER_ALLOW, String.join(", ", supportedMethods));
+        JsonResponseBuilder.sendJsonResponse(writer, outputStream, 405, responseBody, extraHeaders);
     }
 
     protected void handleNotFound() throws IOException {
-        String contentType = "application/json; charset=utf-8";
-        String responseBody = "{\"error\": \"Not found\", \"message\": \"The requested resource was not found\"}";
-        byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
-
-        writeHeadersWithBody(writer, 404, body.length, contentType, null);
-        outputStream.write(body);
-        outputStream.flush();
+        int statusCode = 404;
+        JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode,
+                HttpStatus.getMessage(statusCode), "The requested resource was not found");
     }
 
     protected void handleInternalServerError() throws IOException {
-        String contentType = "application/json; charset=utf-8";
-        String responseBody = "{\"error\": \"Internal server error\"}";
-        byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
-
-        writeHeadersWithBody(writer, 500, body.length, contentType, null);
-        outputStream.write(body);
-        outputStream.flush();
+        int statusCode = 500;
+        JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode, HttpStatus.getMessage(statusCode));
     }
 
     public static void handleBadRequest(OutputStream outputStream, String message) throws IOException {
+        int statusCode = 400;
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            String contentType = "application/json; charset=utf-8";
-            String responseBody = "{\"error\": \"Bad request\", \"message\": \"" + 
-                                 message.replace("\"", "\\\"") + "\"}";
-            byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
+            JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode,
+                    HttpStatus.getMessage(statusCode), message);
+        }
+    }
 
-            writeHeadersWithBody(writer, 400, body.length, contentType, null);
-            outputStream.write(body);
-            outputStream.flush();
+    public static void handleHttpNotSupported(OutputStream outputStream, String message) throws IOException {
+        int statusCode = 505;
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
+            JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode,
+                    HttpStatus.getMessage(statusCode), message);
         }
     }
 }
