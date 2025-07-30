@@ -27,6 +27,8 @@ public class Database {
         return dataSource.getConnection();
     }
 
+    public static HikariDataSource getDataSource() {return dataSource;}
+
     public static void shutdown() {
         if (dataSource != null){
             dataSource.close();

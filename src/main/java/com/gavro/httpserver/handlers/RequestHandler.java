@@ -42,7 +42,7 @@ abstract public class RequestHandler {
         this.writer = new BufferedWriter(new OutputStreamWriter(outputStream));
     }
 
-    abstract public void handleRequest() throws IOException;
+    abstract public void handleRequest() throws IOException, BadRequestException;
 
     protected String determineContentType(File requestedResource) {
         String fileName = requestedResource.getName();
