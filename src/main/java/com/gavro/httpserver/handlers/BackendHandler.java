@@ -2,6 +2,8 @@ package com.gavro.httpserver.handlers;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,9 +19,17 @@ import com.gavro.httpserver.http.HttpMethod;
 import com.gavro.httpserver.utils.JsonResponseBuilder;
 
 public class BackendHandler extends RequestHandler{
+    private final String route;
+    private final String requestBody;
+
+
     protected BackendHandler(String requestLine, Map<String, String> headers, OutputStream outputStream)
     throws BadRequestException, HttpVersionNotSupportedException {
         super(requestLine, headers, outputStream);
+        requestBody = headers.remove("request-body");
+        // ex. GET /api/subjects/{id} HTTP/1.1 -> /api/subjects/{id} -> subjects/{id}
+        route = requestLine.split("\\s+")[1].split("api/")[1];
+
     }
     @Override
     public void handleRequest() throws IOException {

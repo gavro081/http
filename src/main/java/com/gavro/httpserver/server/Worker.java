@@ -1,11 +1,9 @@
 package com.gavro.httpserver.server;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -37,8 +35,8 @@ public class Worker implements Runnable {
                 LOGGER.warning("Received empty request line");
                 return;
             }
-            
-            Map<String, String> headers = parseHeaders(reader);
+
+            Map<String, String> headers = parseRequest(reader);
             
             RequestHandler handler = RequestHandlerFactory.createHandler(requestLine, headers, outputStream);
             handler.handleRequest();
@@ -56,21 +54,46 @@ public class Worker implements Runnable {
             closeSocket();
         }
     }
-    
-    private Map<String, String> parseHeaders(BufferedReader reader) throws IOException {
+
+    private Map<String, String> parseRequest(BufferedReader reader) throws IOException {
         Map<String, String> headers = new HashMap<>();
         String line;
-        
+
         while ((line = reader.readLine()) != null && !line.isEmpty()) {
             String[] parts = line.split(":\\s*", 2);
             if (parts.length == 2) {
                 headers.put(parts[0].toLowerCase(), parts[1]);
             }
         }
-        
+        String contentLengthStr = headers.get("content-length");
+        if (contentLengthStr != null) {
+            try {
+                int contentLength = Integer.parseInt(contentLengthStr);
+                if (contentLength > 0) {
+                    String body = readRequestBody(reader, contentLength);
+                    headers.put("request-body", body);
+                }
+            } catch (NumberFormatException e) {
+                handleBadRequest("Invalid Content-Length header.");
+            }
+        }
+
         return headers;
     }
-    
+
+    private String readRequestBody(BufferedReader reader, int contentLength) throws IOException{
+        char []buffer = new char[contentLength];
+        int totalRead = 0;
+
+        while (totalRead < contentLength) {
+            int bytesRead = reader.read(buffer, totalRead, contentLength - totalRead);
+            if (bytesRead == -1) break;
+            totalRead += bytesRead;
+        }
+
+        return new String(buffer, 0, totalRead);
+    }
+
     private void handleBadRequest(String message) {
         try (OutputStream outputStream = socket.getOutputStream()) {
             RequestHandler.handleBadRequest(outputStream, message);
