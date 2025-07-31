@@ -55,8 +55,10 @@ public class BackendHandler extends RequestHandler{
                             response.jsonBody(), Map.of());
                 }
             } catch (SQLException e) {
-                JsonResponseBuilder.sendErrorResponse(writer, outputStream, 500, "");
+                JsonResponseBuilder.sendErrorResponse(writer, outputStream, 400, "{\"error\": \"Bad Request.\"}");
             }
+        } else {
+            JsonResponseBuilder.sendErrorResponse(writer, outputStream, 404, "{\"error\": \"Path not found.\"}");
         }
     }
 
@@ -119,6 +121,7 @@ public class BackendHandler extends RequestHandler{
         if (route.contains("?")) {
             route = route.split("\\?", 2)[0];
         }
+        if (route.charAt(route.length() - 1) == '/') route = route.substring(0, route.length() - 1);
         return route;
     }
 }

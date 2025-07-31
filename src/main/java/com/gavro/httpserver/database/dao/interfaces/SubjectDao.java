@@ -7,7 +7,7 @@ import java.util.List;
 public interface SubjectDao {
     // GET api/subjects/
     List<Subject> getAll();
-    // GET api/subjects?limit=<number> -> potentially extend to pagination
+    // GET api/subjects  ?limit=<number> -> potentially extend to pagination
     List<Subject> getN(int n);
     // GET api/subjects/code/{code}
     Subject getByCode(String code);

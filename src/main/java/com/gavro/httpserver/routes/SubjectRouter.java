@@ -17,11 +17,7 @@ public class SubjectRouter {
     }
 
     public JsonRouteResult handle(HttpMethod method, String route, Map<String, String> queryParams, String requestBody) {
-        if (!route.startsWith("/api/subjects")) {
-            return new JsonRouteResult(404, "{\"error\": \"Path not found.\"}");
-        }
-        // TODO: clean up code so that only one of these appears
-        if (route.equals("/api/subjects/") || route.equals("/api/subjects")) {
+        if (route.equals("/api/subjects")) {
             switch (method) {
                 case GET -> {
                     if (queryParams.containsKey("limit")) {
@@ -40,11 +36,13 @@ public class SubjectRouter {
                 case POST -> {
                     Subject s = Subject.fromJson(requestBody);
                     subjectService.addSubject(s);
+                    // todo: data could be invalid
                     return new JsonRouteResult(201, "{\"message\": \"Subject added\"}");
                 }
                 case PUT -> {
                     Subject s = Subject.fromJson(requestBody);
                     subjectService.updateSubject(s);
+                    // todo: data could be invalid
                     return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
                 }
                 default -> {
@@ -60,10 +58,12 @@ public class SubjectRouter {
                 switch (method) {
                     case GET -> {
                         Subject s = subjectService.getSubject(code);
+                        if (s == null) return new JsonRouteResult(404, "{\"message\": \"Subject not found\"}");
                         return new JsonRouteResult(200, Subject.toJson(s));
                     }
                     case DELETE -> {
                         subjectService.deleteSubject(code);
+                        // todo: subject could be nonexistent
                         return new JsonRouteResult(200, "{\"message\": \"Subject deleted\"}");
                     }
                     default -> {
@@ -71,17 +71,18 @@ public class SubjectRouter {
                     }
                 }
             }
-            // todo: never makes it here because of query extraction, fix it
-        } else if (route.startsWith("/api/subjects/")) {
+        } else if (route.startsWith("/api/subjects")) {
             try {
                 int id = Integer.parseInt(route.substring("/api/subjects/".length()));
                 switch (method) {
                     case GET -> {
                         Subject s = subjectService.getSubject(id);
+                        if (s == null) return new JsonRouteResult(404, "{\"message\": \"Subject not found\"}");
                         return new JsonRouteResult(200, Subject.toJson(s));
                     }
                     case DELETE -> {
                         subjectService.deleteSubject(id);
+                        // todo: subject could be nonexistent
                         return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
                     }
                     default -> {
