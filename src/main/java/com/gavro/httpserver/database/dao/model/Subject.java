@@ -1,6 +1,7 @@
 package com.gavro.httpserver.database.dao.model;
 
 import com.gavro.httpserver.utils.JsonResponseBuilder;
+import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.List;
@@ -62,26 +63,23 @@ public class Subject {
         return sb.toString();
     }
 
-    public static Subject fromJson(String json) {
-        Map<String, String> map = new HashMap<>();
-        json = json.trim();
-        if (json.startsWith("{") && json.endsWith("}")) {
-            json = json.substring(1, json.length() - 1);
-            String[] entries = json.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
-            for (String entry : entries) {
-                String[] kv = entry.split(":(?=([^\"]*\"[^\"]*\")*[^\"]*$)", 2);
-                if (kv.length == 2) {
-                    String key = kv[0].trim().replaceAll("^\"|\"$", "");
-                    String value = kv[1].trim().replaceAll("^\"|\"$", "");
-                    map.put(key, value);
-                }
-            }
-        }
-        return new Subject(
-                map.getOrDefault("name", ""),
-                map.getOrDefault("code", ""),
-                map.getOrDefault("abstract", "")
-        );
+    public static Subject fromJson(String jsonInput) {
+        JSONObject json = new JSONObject(jsonInput);
+        String name = json.getString("name");
+        String code = json.getString("code");
+        String abstractText = json.getString("abstract");
+
+        return new Subject(abstractText, code, name);
+    }
+
+    public static Subject fromJsonWithId(String jsonInput) {
+        JSONObject json = new JSONObject(jsonInput);
+        int id = json.getInt("id");
+        String name = json.getString("name");
+        String code = json.getString("code");
+        String abstractText = json.getString("abstract");
+
+        return new Subject(id, abstractText, code, name);
     }
 
 }

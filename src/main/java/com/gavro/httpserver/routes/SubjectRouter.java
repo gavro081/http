@@ -5,6 +5,7 @@ import com.gavro.httpserver.database.dao.service.SubjectService;
 import com.gavro.httpserver.exceptions.BadRequestException;
 import com.gavro.httpserver.http.HttpMethod;
 import com.gavro.httpserver.utils.JsonRouteResult;
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
@@ -34,16 +35,22 @@ public class SubjectRouter {
                     }
                 }
                 case POST -> {
-                    Subject s = Subject.fromJson(requestBody);
-                    subjectService.addSubject(s);
-                    // todo: data could be invalid
-                    return new JsonRouteResult(201, "{\"message\": \"Subject added\"}");
+                    try {
+                        Subject s = Subject.fromJson(requestBody);
+                        subjectService.addSubject(s);
+                        return new JsonRouteResult(201, "{\"message\": \"Subject added\"}");
+                    } catch (Exception e){
+                        return new JsonRouteResult(400, "{\"error\": \"Invalid data\"}");
+                    }
                 }
                 case PUT -> {
-                    Subject s = Subject.fromJson(requestBody);
-                    subjectService.updateSubject(s);
-                    // todo: data could be invalid
-                    return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
+                    try {
+                        Subject s = Subject.fromJsonWithId(requestBody);
+                        subjectService.updateSubject(s);
+                        return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
+                    } catch (Exception e){
+                        return new JsonRouteResult(400, "{\"error\": \"Invalid data\"}");
+                    }
                 }
                 default -> {
                     return new JsonRouteResult(405, "{\"error\": \"Method not allowed.\"}");

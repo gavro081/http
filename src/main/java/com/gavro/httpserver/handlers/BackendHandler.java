@@ -32,17 +32,13 @@ public class BackendHandler extends RequestHandler{
     throws BadRequestException, HttpVersionNotSupportedException {
         super(requestLine, headers, outputStream);
         requestBody = headers.remove("request-body");
-        // ex. GET /api/subjects/{id} HTTP/1.1 -> /api/subjects/{id} -> subjects/{id}
-//        route = requestLine.split("\\s+")[1].split("api/")[1];
         route = requestLine.split("\\s++")[1];
 
     }
 
     public void dispatchRequest() throws IOException, BadRequestException {
         Map<String, String> queryParams = extractQueryParams(route);
-        // todo fix issue that occurs because of params extraction
         String path = extractPath(route);
-//        String path = route;
         if (path.startsWith("/api/subjects")){
             try {
                 JsonRouteResult response = new SubjectRouter(new SubjectService(new SubjectDaoImpl(Database.getConnection())))
@@ -55,7 +51,8 @@ public class BackendHandler extends RequestHandler{
                             response.jsonBody(), Map.of());
                 }
             } catch (SQLException e) {
-                JsonResponseBuilder.sendErrorResponse(writer, outputStream, 400, "{\"error\": \"Bad Request.\"}");
+                JsonResponseBuilder.sendErrorResponse(writer, outputStream, 500,
+                        "{\"error\": \"Internal server error.\"}");
             }
         } else {
             JsonResponseBuilder.sendErrorResponse(writer, outputStream, 404, "{\"error\": \"Path not found.\"}");
@@ -65,41 +62,6 @@ public class BackendHandler extends RequestHandler{
     @Override
     public void handleRequest() throws IOException, BadRequestException {
         dispatchRequest();
-//        switch (method) {
-//            case HttpMethod.GET -> handleBasicGet();
-//            default -> handleUnsupportedMethod(new ArrayList<>());
-//        }
-    }
-
-    private void handleBasicGet() throws IOException {
-        try (Connection conn = Database.getConnection();
-             Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery("SELECT * FROM subject LIMIT 5")){
-            
-            StringBuilder bodySb = new StringBuilder("{\"data\":[");
-            boolean first = true;
-            while (rs.next()) {
-                if (!first) bodySb.append(",");
-                else first = false;
-
-                String name = rs.getString("name");
-                String code = rs.getString("code");
-                String subjectAbstract = rs.getString("abstract");
-
-                bodySb.append("{")
-                        .append("\"name\":\"").append(JsonResponseBuilder.escapeJson(name)).append("\",")
-                        .append("\"code\":\"").append(JsonResponseBuilder.escapeJson(code)).append("\",")
-                        .append("\"abstract\":\"").append(JsonResponseBuilder.escapeJson(subjectAbstract)).append("\"")
-                        .append("}");
-            }
-
-            bodySb.append("]}");
-
-            JsonResponseBuilder.sendJsonResponse(writer, outputStream, 200, bodySb.toString(), null);
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Database error while fetching subjects", e);
-            handleInternalServerError();
-        }
     }
 
     public static Map<String, String> extractQueryParams(String uri) {
