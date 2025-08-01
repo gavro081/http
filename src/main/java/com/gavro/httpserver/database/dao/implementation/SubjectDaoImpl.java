@@ -73,7 +73,8 @@ public class SubjectDaoImpl implements SubjectDao {
         try (PreparedStatement statement = connection.prepareStatement(sql)){
             statement.setInt(1, id);
             try (ResultSet rs = statement.executeQuery()) {
-                return subjectsRsToList(rs).getFirst();
+                List<Subject> list = subjectsRsToList(rs);
+                return list.isEmpty() ? null : list.getFirst();
             }
         } catch (SQLException e){
             return null;
