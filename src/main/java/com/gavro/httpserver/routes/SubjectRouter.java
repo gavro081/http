@@ -24,7 +24,7 @@ public class SubjectRouter {
                         try {
                             int limit = Integer.parseInt(queryParams.get("limit"));
                             List<Subject> subjects = subjectService.getSubjects(limit);
-                            return new JsonRouteResult(200, Subject.toJson(subjects));
+                            return new JsonRouteResult(200, "{\"data\":" + Subject.toJson(subjects) + "}");
                         } catch (NumberFormatException e) {
                             return new JsonRouteResult(400, "{\"error\": \"Invalid limit parameter.\"}");
                         } catch (SQLException e){
@@ -33,7 +33,7 @@ public class SubjectRouter {
                     } else {
                         try {
                             List<Subject> subjects = subjectService.getSubjects();
-                            return new JsonRouteResult(200, Subject.toJson(subjects));
+                            return new JsonRouteResult(200, "{\"data\":" + Subject.toJson(subjects) + "}");
                         } catch (SQLException e) {
                             return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
                         }
@@ -89,7 +89,7 @@ public class SubjectRouter {
                         try {
                             Subject s = subjectService.getSubject(code);
                             if (s == null) return new JsonRouteResult(404, "{\"error\": \"Subject not found\"}");
-                            return new JsonRouteResult(200, Subject.toJson(s));
+                            return new JsonRouteResult(200, "{\"data\":" + Subject.toJson(s) + "}");
                         } catch (SQLException e) {
                             return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
                         }
@@ -118,7 +118,7 @@ public class SubjectRouter {
                         try {
                             Subject s = subjectService.getSubject(id);
                             if (s == null) return new JsonRouteResult(404, "{\"error\": \"Subject not found\"}");
-                            return new JsonRouteResult(200, Subject.toJson(s));
+                            return new JsonRouteResult(200, "{\"data\":" + Subject.toJson(s) + "}");
                         } catch (SQLException e) {
                             return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
                         }
