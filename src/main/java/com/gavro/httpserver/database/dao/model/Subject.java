@@ -3,9 +3,7 @@ package com.gavro.httpserver.database.dao.model;
 import com.gavro.httpserver.utils.JsonResponseBuilder;
 import org.json.JSONObject;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Subject {
     private int id;

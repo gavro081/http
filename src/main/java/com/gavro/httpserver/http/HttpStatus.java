@@ -13,6 +13,7 @@ public final class HttpStatus {
             Map.entry(403, "Forbidden"),
             Map.entry(404, "Not Found"),
             Map.entry(405, "Method Not Allowed"),
+            Map.entry(409, "Conflict"),
             Map.entry(500, "Internal Server Error"),
             Map.entry(505, "HTTP Version Not Supported")
     );

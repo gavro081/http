@@ -27,21 +27,17 @@ public class SubjectDaoImpl implements SubjectDao {
     }
 
     @Override
-    public List<Subject> getAll(){
+    public List<Subject> getAll() throws SQLException{
         String sql = "SELECT * FROM subject";
         try (Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery(sql)
         ) {
             return subjectsRsToList(rs);
-        } catch (SQLException e){
-            // todo
-            return null;
         }
     }
 
     @Override
-    public List<Subject> getN(int n){
-        List<Subject> subjects = new ArrayList<>();
+    public List<Subject> getN(int n) throws SQLException{
         String sql = "SELECT * FROM subject LIMIT ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)
         ) {
@@ -49,13 +45,10 @@ public class SubjectDaoImpl implements SubjectDao {
             try (ResultSet rs = statement.executeQuery()) {
                 return subjectsRsToList(rs);
             }
-        } catch (SQLException e){
-            // todo
-            return null;
         }
     }
     @Override
-    public Subject getByCode(String code){
+    public Subject getByCode(String code) throws SQLException{
         String sql = "SELECT * FROM subject WHERE code = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)){
             statement.setString(1, code);
@@ -63,12 +56,10 @@ public class SubjectDaoImpl implements SubjectDao {
                 List<Subject> list = subjectsRsToList(rs);
                 return list.isEmpty() ? null : list.getFirst();
             }
-        } catch (SQLException e){
-            return null;
         }
     }
     @Override
-    public Subject getById(int id){
+    public Subject getById(int id) throws SQLException{
         String sql = "SELECT * FROM subject WHERE id = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)){
             statement.setInt(1, id);
@@ -76,12 +67,10 @@ public class SubjectDaoImpl implements SubjectDao {
                 List<Subject> list = subjectsRsToList(rs);
                 return list.isEmpty() ? null : list.getFirst();
             }
-        } catch (SQLException e){
-            return null;
         }
     }
     @Override
-    public void insert(Subject subject){
+    public Subject insert(Subject subject) throws SQLException{
         String sql = """
                 INSERT INTO subject (name, code, abstract)
                 values (?, ?, ?)
@@ -90,13 +79,12 @@ public class SubjectDaoImpl implements SubjectDao {
             statement.setString(1, subject.getName());
             statement.setString(2, subject.getCode());
             statement.setString(3, subject.getAbstract());
-            statement.executeUpdate();
-        } catch (SQLException e){
-            // todo
+            boolean success = statement.executeUpdate() > 0;
+            return success ? subject : null;
         }
     }
     @Override
-    public void update(Subject subject){
+    public boolean update(Subject subject) throws SQLException{
         String sql = """
                 UPDATE subject SET name = ?, code = ?, abstract = ?
                 WHERE id = ?
@@ -106,33 +94,30 @@ public class SubjectDaoImpl implements SubjectDao {
             statement.setString(2, subject.getCode());
             statement.setString(3, subject.getAbstract());
             statement.setInt(4, subject.getId());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            // todo
+            int rows = statement.executeUpdate();
+            return rows > 0;
         }
     }
     @Override
-    public void delete(String code){
+    public boolean delete(String code) throws SQLException{
         String sql = """
                 DELETE FROM subject WHERE code = ?
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql)){
             statement.setString(1, code);
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            // todo
+            int rows = statement.executeUpdate();
+            return rows > 0;
         }
     }
     @Override
-    public void delete(int id){
+    public boolean delete(int id) throws SQLException{
         String sql = """
                 DELETE FROM subject WHERE id = ?
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql)){
             statement.setInt(1, id);
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            // todo
+            int rows = statement.executeUpdate();
+            return rows > 0;
         }
     }
 

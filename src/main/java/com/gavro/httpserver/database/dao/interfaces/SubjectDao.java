@@ -2,25 +2,26 @@ package com.gavro.httpserver.database.dao.interfaces;
 
 import com.gavro.httpserver.database.dao.model.Subject;
 
+import java.sql.SQLException;
 import java.util.List;
 
 public interface SubjectDao {
     // GET api/subjects/
-    List<Subject> getAll();
+    List<Subject> getAll() throws SQLException;
     // GET api/subjects?limit=<number> -> potentially extend to pagination
-    List<Subject> getN(int n);
+    List<Subject> getN(int n) throws SQLException;
     // GET api/subjects/code/{code}
-    Subject getByCode(String code);
+    Subject getByCode(String code) throws SQLException;
     // GET api/subjects/{id}
-    Subject getById(int id);
+    Subject getById(int id) throws SQLException;
     // POST api/subjects/
     // body: {subject: [abstract: <abs>, code: <code>: name: <name>] }
-    void insert(Subject subject);
+    Subject insert(Subject subject) throws SQLException;
     // PUT api/subjects
     // body: {subject: [abstract: <abs>, code: <code>: name: <name>] }
-    void update(Subject subject);
+    boolean update(Subject subject) throws SQLException;
     // DELETE api/subjects/{id}
-    void delete(String code);
+    boolean delete(String code) throws SQLException;
     // DELETE api/subjects/code/{code}
-    void delete(int id);
+    boolean delete(int id) throws SQLException;
 }

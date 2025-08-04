@@ -1,14 +1,13 @@
 package com.gavro.httpserver.routes;
 
-import com.gavro.httpserver.database.dao.model.Subject;
-import com.gavro.httpserver.database.dao.service.SubjectService;
-import com.gavro.httpserver.exceptions.BadRequestException;
-import com.gavro.httpserver.http.HttpMethod;
-import com.gavro.httpserver.utils.JsonRouteResult;
-import org.json.JSONObject;
-
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+
+import com.gavro.httpserver.database.dao.model.Subject;
+import com.gavro.httpserver.database.dao.service.SubjectService;
+import com.gavro.httpserver.http.HttpMethod;
+import com.gavro.httpserver.utils.JsonRouteResult;
 
 public class SubjectRouter {
     private final SubjectService subjectService;
@@ -27,18 +26,35 @@ public class SubjectRouter {
                             List<Subject> subjects = subjectService.getSubjects(limit);
                             return new JsonRouteResult(200, Subject.toJson(subjects));
                         } catch (NumberFormatException e) {
-                            return new JsonRouteResult(400, "Invalid parameters.");
+                            return new JsonRouteResult(400, "{\"error\": \"Invalid limit parameter.\"}");
+                        } catch (SQLException e){
+                            return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
                         }
                     } else {
-                        List<Subject> subjects = subjectService.getSubjects();
-                        return new JsonRouteResult(200, Subject.toJson(subjects));
+                        try {
+                            List<Subject> subjects = subjectService.getSubjects();
+                            return new JsonRouteResult(200, Subject.toJson(subjects));
+                        } catch (SQLException e) {
+                            return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
+                        }
                     }
                 }
                 case POST -> {
                     try {
                         Subject s = Subject.fromJson(requestBody);
-                        subjectService.addSubject(s);
-                        return new JsonRouteResult(201, "{\"message\": \"Subject added\"}");
+                        Subject res = subjectService.addSubject(s);
+                        if (res != null) {
+                            return new JsonRouteResult(201, "{\"message\": \"Subject added\", " +
+                                    "\"subject\": "+ Subject.toJson(res) +" }");
+                        } else {
+                            return new JsonRouteResult(500, "{\"error\": \"Failed to create subject\"}");
+                        }
+                    } catch (SQLException e) {
+                        String errorMessage = e.getMessage().toLowerCase();
+                        if (errorMessage.contains("duplicate") || errorMessage.contains("unique")) {
+                            return new JsonRouteResult(409, "{\"error\": \"Subject with this code already exists\"}");
+                        }
+                        return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
                     } catch (Exception e){
                         return new JsonRouteResult(400, "{\"error\": \"Invalid data\"}");
                     }
@@ -46,8 +62,14 @@ public class SubjectRouter {
                 case PUT -> {
                     try {
                         Subject s = Subject.fromJsonWithId(requestBody);
-                        subjectService.updateSubject(s);
-                        return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
+                        boolean updated = subjectService.updateSubject(s);
+                        if (updated) {
+                            return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
+                        } else {
+                            return new JsonRouteResult(404, "{\"error\": \"Subject not found\"}");
+                        }
+                    } catch (SQLException e) {
+                        return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
                     } catch (Exception e){
                         return new JsonRouteResult(400, "{\"error\": \"Invalid data\"}");
                     }
@@ -60,18 +82,28 @@ public class SubjectRouter {
         } else if (route.startsWith("/api/subjects/code/")) {
             String code = route.substring("/api/subjects/code/".length());
             if (code.isEmpty()) {
-                return new JsonRouteResult(400, "Bad request.");
+                return new JsonRouteResult(400, "{\"error\": \"Bad request.\"}");
             } else {
                 switch (method) {
                     case GET -> {
-                        Subject s = subjectService.getSubject(code);
-                        if (s == null) return new JsonRouteResult(404, "{\"message\": \"Subject not found\"}");
-                        return new JsonRouteResult(200, Subject.toJson(s));
+                        try {
+                            Subject s = subjectService.getSubject(code);
+                            if (s == null) return new JsonRouteResult(404, "{\"error\": \"Subject not found\"}");
+                            return new JsonRouteResult(200, Subject.toJson(s));
+                        } catch (SQLException e) {
+                            return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
+                        }
                     }
                     case DELETE -> {
-                        subjectService.deleteSubject(code);
-                        // todo: subject could be nonexistent
-                        return new JsonRouteResult(200, "{\"message\": \"Subject deleted\"}");
+                        try {
+                            boolean success = subjectService.deleteSubject(code);
+                            if (success)
+                                return new JsonRouteResult(200, "{\"message\": \"Subject deleted\"}");
+                            else
+                                return new JsonRouteResult(404, "{\"error\": \"Subject not found.\"}");
+                        } catch (SQLException e) {
+                            return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
+                        }
                     }
                     default -> {
                         return new JsonRouteResult(405, "{\"error\": \"Method not allowed.\"}");
@@ -83,14 +115,24 @@ public class SubjectRouter {
                 int id = Integer.parseInt(route.substring("/api/subjects/".length()));
                 switch (method) {
                     case GET -> {
-                        Subject s = subjectService.getSubject(id);
-                        if (s == null) return new JsonRouteResult(404, "{\"message\": \"Subject not found\"}");
-                        return new JsonRouteResult(200, Subject.toJson(s));
+                        try {
+                            Subject s = subjectService.getSubject(id);
+                            if (s == null) return new JsonRouteResult(404, "{\"error\": \"Subject not found\"}");
+                            return new JsonRouteResult(200, Subject.toJson(s));
+                        } catch (SQLException e) {
+                            return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
+                        }
                     }
                     case DELETE -> {
-                        subjectService.deleteSubject(id);
-                        // todo: subject could be nonexistent
-                        return new JsonRouteResult(200, "{\"message\": \"Subject updated\"}");
+                        try {
+                            boolean success = subjectService.deleteSubject(id);
+                            if (success)
+                                return new JsonRouteResult(200, "{\"message\": \"Subject deleted\"}");
+                            else
+                                return new JsonRouteResult(404, "{\"error\": \"Subject not found.\"}");
+                        } catch (SQLException e) {
+                            return new JsonRouteResult(500, "{\"error\": \"Internal server error.\"}");
+                        }
                     }
                     default -> {
                         return new JsonRouteResult(405, "{\"error\": \"Method not allowed.\"}");

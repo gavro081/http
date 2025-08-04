@@ -1,9 +1,9 @@
 package com.gavro.httpserver.database.dao.service;
 
-import com.gavro.httpserver.database.dao.implementation.SubjectDaoImpl;
 import com.gavro.httpserver.database.dao.interfaces.SubjectDao;
 import com.gavro.httpserver.database.dao.model.Subject;
 
+import java.sql.SQLException;
 import java.util.List;
 
 public class SubjectService {
@@ -13,36 +13,35 @@ public class SubjectService {
         this.subjectDao = subjectDao;
     }
 
-    public List<Subject> getSubjects(){
+    public List<Subject> getSubjects() throws SQLException{
         return subjectDao.getAll();
     }
 
-    public List<Subject> getSubjects(int n){
+    public List<Subject> getSubjects(int n) throws SQLException {
         return subjectDao.getN(n);
     }
 
-    public Subject getSubject(int id){
+    public Subject getSubject(int id) throws SQLException{
         return subjectDao.getById(id);
     }
 
-    public Subject getSubject(String code){
+    public Subject getSubject(String code) throws SQLException{
         return subjectDao.getByCode(code);
     }
 
-    public void addSubject(Subject s){
-        // todo: make return boolean status or the added subject
-        subjectDao.insert(s);
+    public Subject addSubject(Subject s) throws SQLException{
+        return subjectDao.insert(s);
     }
 
-    public void updateSubject(Subject s){
-        subjectDao.update(s);
+    public boolean updateSubject(Subject s) throws SQLException{
+        return subjectDao.update(s);
     }
 
-    public void deleteSubject(int id){
-        subjectDao.delete(id);
+    public boolean deleteSubject(int id) throws SQLException{
+        return subjectDao.delete(id);
     }
 
-    public void deleteSubject(String code){
-        subjectDao.delete(code);
+    public boolean deleteSubject(String code) throws SQLException{
+        return subjectDao.delete(code);
     }
 }

@@ -4,21 +4,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 
 import com.gavro.httpserver.database.Database;
 import com.gavro.httpserver.database.dao.implementation.SubjectDaoImpl;
 import com.gavro.httpserver.database.dao.service.SubjectService;
 import com.gavro.httpserver.exceptions.BadRequestException;
 import com.gavro.httpserver.exceptions.HttpVersionNotSupportedException;
-import com.gavro.httpserver.http.HttpMethod;
 import com.gavro.httpserver.routes.SubjectRouter;
 import com.gavro.httpserver.utils.JsonResponseBuilder;
 import com.gavro.httpserver.utils.JsonRouteResult;
@@ -36,7 +30,7 @@ public class BackendHandler extends RequestHandler{
 
     }
 
-    public void dispatchRequest() throws IOException, BadRequestException {
+    public void dispatchRequest() throws IOException {
         Map<String, String> queryParams = extractQueryParams(route);
         String path = extractPath(route);
         if (path.startsWith("/api/subjects")){
@@ -52,7 +46,7 @@ public class BackendHandler extends RequestHandler{
                 }
             } catch (SQLException e) {
                 JsonResponseBuilder.sendErrorResponse(writer, outputStream, 500,
-                        "{\"error\": \"Internal server error.\"}");
+                        "{\"error\": \"Database connection error\"}");
             }
         } else {
             JsonResponseBuilder.sendErrorResponse(writer, outputStream, 404, "{\"error\": \"Path not found.\"}");
