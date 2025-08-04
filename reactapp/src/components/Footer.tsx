@@ -5,14 +5,11 @@ const Footer = () => {
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 					<div className="space-y-4">
 						<div className="flex items-center space-x-3">
-							<div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
-								<span className="text-white font-bold text-xs">HS</span>
-							</div>
 							<span className="text-white font-semibold">HTTP Server</span>
 						</div>
 						<p className="text-gray-400 text-sm">
-							A custom Java HTTP server implementation serving React
-							applications with modern web technologies.
+							A custom Java HTTP server implementation serving a React
+							application.
 						</p>
 					</div>
 

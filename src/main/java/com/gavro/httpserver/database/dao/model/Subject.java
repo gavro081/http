@@ -42,7 +42,8 @@ public class Subject {
 
     public static String toJson(Subject subject){
         return String.format(
-                "{\"name\":\"%s\",\"code\":\"%s\",\"abstract\":\"%s\"}",
+                "{\"id\":\"%s\",\"name\":\"%s\",\"code\":\"%s\",\"abstract\":\"%s\"}",
+                JsonResponseBuilder.escapeJson(Integer.toString(subject.getId())),
                 JsonResponseBuilder.escapeJson(subject.getName()),
                 JsonResponseBuilder.escapeJson(subject.getCode()),
                 JsonResponseBuilder.escapeJson(subject.getAbstract())
