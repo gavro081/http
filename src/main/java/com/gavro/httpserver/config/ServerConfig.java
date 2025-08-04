@@ -2,7 +2,7 @@ package com.gavro.httpserver.config;
 
 
 public final class ServerConfig {
-    public static final int DEFAULT_PORT = 1234;
+    public static final int DEFAULT_PORT = 8000;
     public static final int DEFAULT_THREAD_POOL_SIZE = 10;
     public static final String DEFAULT_CONTENT_ROOT = "reactapp/dist";
     public static final String DEFAULT_INDEX_FILE = "index.html";
