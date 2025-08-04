@@ -38,18 +38,15 @@ public class BackendHandler extends RequestHandler{
                 JsonRouteResult response = new SubjectRouter(new SubjectService(new SubjectDaoImpl(Database.getConnection())))
                         .handle(method, path, queryParams, requestBody);
                 int statusCode = response.statusCode();
-                if (statusCode >= 400){
-                    JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode, response.jsonBody());
-                } else {
-                    JsonResponseBuilder.sendJsonResponse(writer, outputStream, statusCode,
-                            response.jsonBody(), Map.of());
-                }
+                JsonResponseBuilder.sendJsonResponse(writer, outputStream, statusCode,
+                        response.jsonBody(), Map.of());
             } catch (SQLException e) {
-                JsonResponseBuilder.sendErrorResponse(writer, outputStream, 500,
-                        "{\"error\": \"Database connection error\"}");
+                JsonResponseBuilder.sendJsonResponse(writer, outputStream, 500,
+                        "{\"error\": \"Database connection error\"}", Map.of());
             }
         } else {
-            JsonResponseBuilder.sendErrorResponse(writer, outputStream, 404, "{\"error\": \"Path not found.\"}");
+            JsonResponseBuilder.sendJsonResponse(writer, outputStream, 404, 
+                    "{\"error\": \"Path not found.\"}", Map.of());
         }
     }
 

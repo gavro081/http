@@ -14,19 +14,7 @@ public final class JsonResponseBuilder {
     private JsonResponseBuilder() {
         throw new UnsupportedOperationException("Utility class");
     }
-    
-    public static void sendErrorResponse(BufferedWriter writer, OutputStream outputStream, 
-                                       int statusCode, String error, String message) throws IOException {
-        String responseBody = buildErrorJson(error, message);
-        sendJsonResponse(writer, outputStream, statusCode, responseBody, null);
-    }
-    
-    public static void sendErrorResponse(BufferedWriter writer, OutputStream outputStream, 
-                                       int statusCode, String error) throws IOException {
-        String responseBody = "{\"error\": \"" + escapeJson(error) + "\"}";
-        sendJsonResponse(writer, outputStream, statusCode, responseBody, null);
-    }
-    
+
     public static void sendJsonResponse(BufferedWriter writer, OutputStream outputStream, 
                                       int statusCode, String jsonBody, Map<String, String> extraHeaders) throws IOException {
         byte[] body = jsonBody.getBytes(StandardCharsets.UTF_8);

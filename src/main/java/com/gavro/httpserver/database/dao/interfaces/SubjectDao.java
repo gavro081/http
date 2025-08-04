@@ -8,7 +8,7 @@ import java.util.List;
 public interface SubjectDao {
     // GET api/subjects/
     List<Subject> getAll() throws SQLException;
-    // GET api/subjects?limit=<number> -> potentially extend to pagination
+    // GET api/subjects?limit=<number> -> TODO*: add pagination
     List<Subject> getN(int n) throws SQLException;
     // GET api/subjects/code/{code}
     Subject getByCode(String code) throws SQLException;
@@ -18,7 +18,7 @@ public interface SubjectDao {
     // body: {subject: [abstract: <abs>, code: <code>: name: <name>] }
     Subject insert(Subject subject) throws SQLException;
     // PUT api/subjects
-    // body: {subject: [abstract: <abs>, code: <code>: name: <name>] }
+    // body: {subject: [id: <pk>, abstract: <abs>, code: <code>: name: <name>] }
     boolean update(Subject subject) throws SQLException;
     // DELETE api/subjects/{id}
     boolean delete(String code) throws SQLException;

@@ -124,28 +124,29 @@ abstract public class RequestHandler {
 
     protected void handleNotFound() throws IOException {
         int statusCode = 404;
-        JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode,
-                HttpStatus.getMessage(statusCode), "The requested resource was not found");
+        JsonResponseBuilder.sendJsonResponse(writer, outputStream, statusCode,
+                "{\"error\":\"" + HttpStatus.getMessage(statusCode) + "\"}", Map.of());
     }
 
     protected void handleInternalServerError() throws IOException {
         int statusCode = 500;
-        JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode, HttpStatus.getMessage(statusCode));
+        JsonResponseBuilder.sendJsonResponse(writer, outputStream, statusCode, 
+            "{\"error\":\"" + HttpStatus.getMessage(statusCode) + "\"}", Map.of());
     }
 
     public static void handleBadRequest(OutputStream outputStream, String message) throws IOException {
         int statusCode = 400;
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode,
-                    HttpStatus.getMessage(statusCode), message);
+            JsonResponseBuilder.sendJsonResponse(writer, outputStream, statusCode,
+                    "{\"error\":\"" + message + "\"}", Map.of());
         }
     }
 
     public static void handleHttpNotSupported(OutputStream outputStream, String message) throws IOException {
         int statusCode = 505;
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-            JsonResponseBuilder.sendErrorResponse(writer, outputStream, statusCode,
-                    HttpStatus.getMessage(statusCode), message);
+            JsonResponseBuilder.sendJsonResponse(writer, outputStream, statusCode,
+                    "{\"error\":\"" + message + "\"}", Map.of());
         }
     }
 }
