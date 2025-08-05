@@ -17,6 +17,16 @@ public final class JsonResponseBuilder {
 
     public static void sendJsonResponse(BufferedWriter writer, OutputStream outputStream, 
                                       int statusCode, String jsonBody, Map<String, String> extraHeaders) throws IOException {
+        if (writer == null || outputStream == null) {
+            throw new IllegalArgumentException("Writer and outputStream cannot be null");
+        }
+        if (jsonBody == null) {
+            jsonBody = "{}";
+        }
+        if (extraHeaders == null) {
+            extraHeaders = Map.of();
+        }
+        
         byte[] body = jsonBody.getBytes(StandardCharsets.UTF_8);
         RequestHandler.writeHeadersWithBody(writer, statusCode, body.length, HttpConstants.CONTENT_TYPE_JSON, extraHeaders);
         outputStream.write(body);

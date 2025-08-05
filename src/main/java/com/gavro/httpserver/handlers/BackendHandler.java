@@ -74,7 +74,9 @@ public class BackendHandler extends RequestHandler{
         if (route.contains("?")) {
             route = route.split("\\?", 2)[0];
         }
-        if (route.charAt(route.length() - 1) == '/') route = route.substring(0, route.length() - 1);
+        if (route.charAt(route.length() - 1) == '/') {
+            route = route.substring(0, route.length() - 1);
+        }
         return route;
     }
 }

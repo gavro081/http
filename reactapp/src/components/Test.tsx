@@ -148,10 +148,8 @@ const Test = () => {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
 
-			const jsondata: { message: string; subject: Subject } =
-				await response.json();
+			const jsondata: { message: string } = await response.json();
 			setMessage(jsondata.message);
-			setSingleSubject(jsondata.subject);
 			setLoading("");
 		} catch (err) {
 			setError(

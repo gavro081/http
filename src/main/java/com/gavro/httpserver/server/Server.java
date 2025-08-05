@@ -14,6 +14,7 @@ import com.gavro.httpserver.database.Database;
 
 public class Server implements Runnable {
     private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
+    private static final int SHUTDOWN_TIMEOUT_SECONDS = 5;
     
     private final int port;
     private final ExecutorService threadPool;
@@ -55,7 +56,7 @@ public class Server implements Runnable {
         running = false;
         threadPool.shutdown();
         try {
-            if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
+            if (!threadPool.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 threadPool.shutdownNow();
             }
         } catch (InterruptedException e) {

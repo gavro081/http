@@ -29,7 +29,7 @@ public class SubjectService {
         return subjectDao.getByCode(code);
     }
 
-    public Subject addSubject(Subject s) throws SQLException{
+    public boolean addSubject(Subject s) throws SQLException{
         return subjectDao.insert(s);
     }
 

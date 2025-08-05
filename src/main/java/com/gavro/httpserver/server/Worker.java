@@ -1,9 +1,11 @@
 package com.gavro.httpserver.server;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -21,6 +23,9 @@ public class Worker implements Runnable {
     private final Socket socket;
 
     public Worker(Socket socket) throws SocketException {
+        if (socket == null) {
+            throw new IllegalArgumentException("Socket cannot be null");
+        }
         this.socket = socket;
         this.socket.setSoTimeout(ServerConfig.SOCKET_TIMEOUT_MS);
     }

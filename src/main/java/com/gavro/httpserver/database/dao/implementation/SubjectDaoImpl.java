@@ -1,11 +1,15 @@
 package com.gavro.httpserver.database.dao.implementation;
 
-import com.gavro.httpserver.database.dao.interfaces.SubjectDao;
-import com.gavro.httpserver.database.dao.model.Subject;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.gavro.httpserver.database.dao.interfaces.SubjectDao;
+import com.gavro.httpserver.database.dao.model.Subject;
 
 public class SubjectDaoImpl implements SubjectDao {
     private final Connection connection;
@@ -70,7 +74,7 @@ public class SubjectDaoImpl implements SubjectDao {
         }
     }
     @Override
-    public Subject insert(Subject subject) throws SQLException{
+    public boolean insert(Subject subject) throws SQLException{
         String sql = """
                 INSERT INTO subject (name, code, abstract)
                 values (?, ?, ?)
@@ -79,8 +83,7 @@ public class SubjectDaoImpl implements SubjectDao {
             statement.setString(1, subject.getName());
             statement.setString(2, subject.getCode());
             statement.setString(3, subject.getAbstract());
-            boolean success = statement.executeUpdate() > 0;
-            return success ? subject : null;
+            return statement.executeUpdate() > 0;
         }
     }
     @Override

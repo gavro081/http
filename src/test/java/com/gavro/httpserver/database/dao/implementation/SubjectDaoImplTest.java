@@ -71,9 +71,8 @@ class SubjectDaoImplTest {
     @DisplayName("Test delete by code function works properly")
     void testDeleteByCode() {
         try {
-            Subject retrieved = subjectDao.insert(TEST_SUBJECT_1);
-            assertNotNull(retrieved, "Subject should exist before deletion");
-            assertEquals("TEST001", retrieved.getCode());
+            boolean success = subjectDao.insert(TEST_SUBJECT_1);
+            assertTrue(success, "Subject insertion should return true.");
 
             boolean b = subjectDao.delete("TEST001");
             assertTrue(b, "Subject deletion should return true");
@@ -90,8 +89,8 @@ class SubjectDaoImplTest {
     @DisplayName("Test delete by ID function works properly")
     void testDeleteById() {
         try {
-            Subject inserted = subjectDao.insert(TEST_SUBJECT_2);
-            assertNotNull(inserted, "Subject should be inserted successfully");
+            boolean success = subjectDao.insert(TEST_SUBJECT_2);
+            assertTrue(success, "Subject should be inserted successfully");
 
             Subject retrieved = subjectDao.getByCode("TEST002");
             assertNotNull(retrieved, "Subject should exist before deletion");
@@ -112,8 +111,8 @@ class SubjectDaoImplTest {
     @DisplayName("Test insert function")
     void testInsert() {
         try {
-            Subject inserted = subjectDao.insert(TEST_SUBJECT_1);
-            assertNotNull(inserted, "Insert should return the inserted subject");
+            boolean success = subjectDao.insert(TEST_SUBJECT_1);
+            assertTrue(success, "Insert should return true if successful");
 
             Subject retrieved = subjectDao.getByCode("TEST001");
             assertNotNull(retrieved, "Inserted subject should be retrievable");

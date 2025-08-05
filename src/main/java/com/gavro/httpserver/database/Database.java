@@ -2,15 +2,26 @@ package com.gavro.httpserver.database;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.logging.Logger;
 
 import com.gavro.httpserver.config.DatabaseConfig;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-public class Database {
+public final class Database {
+    private static final Logger LOGGER = Logger.getLogger(Database.class.getName());
     private static HikariDataSource dataSource;
 
-    public static void init() {
+    private Database() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
+    public static synchronized void init() {
+        if (dataSource != null) {
+            LOGGER.warning("Database already initialized");
+            return;
+        }
+        
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(DatabaseConfig.getUrl());
         config.setUsername(DatabaseConfig.getUser());
@@ -21,17 +32,28 @@ public class Database {
         config.setMaxLifetime(300000);
 
         dataSource = new HikariDataSource(config);
+        LOGGER.info("Database connection pool initialized");
     }
 
     public static Connection getConnection() throws SQLException {
+        if (dataSource == null) {
+            throw new IllegalStateException("Database not initialized. Call init() first.");
+        }
         return dataSource.getConnection();
     }
 
-    public static HikariDataSource getDataSource() {return dataSource;}
+    public static HikariDataSource getDataSource() {
+        if (dataSource == null) {
+            throw new IllegalStateException("Database not initialized. Call init() first.");
+        }
+        return dataSource;
+    }
 
-    public static void shutdown() {
+    public static synchronized void shutdown() {
         if (dataSource != null){
             dataSource.close();
+            dataSource = null;
+            LOGGER.info("Database connection pool shut down");
         }
     }
 }

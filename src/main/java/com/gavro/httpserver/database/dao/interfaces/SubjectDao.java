@@ -16,7 +16,7 @@ public interface SubjectDao {
     Subject getById(int id) throws SQLException;
     // POST api/subjects/
     // body: {subject: [abstract: <abs>, code: <code>: name: <name>] }
-    Subject insert(Subject subject) throws SQLException;
+    boolean insert(Subject subject) throws SQLException;
     // PUT api/subjects
     // body: {subject: [id: <pk>, abstract: <abs>, code: <code>: name: <name>] }
     boolean update(Subject subject) throws SQLException;
